@@ -1,65 +1,98 @@
-import Image from "next/image";
+import React from "react";
+import Link from "next/link";
+import { StoryCard } from "@/components/StoryCard";
+import { CategoryChipRow } from "@/components/CategoryChipRow";
+import { AuthControls } from "@/components/AuthControls";
+import { Footer } from "@/components/Footer";
+import { getTopArticles } from "@/lib/supabase/queries/articles";
 
-export default function Home() {
+// Read fresh from Supabase on each request — manually inserted articles should
+// appear without a rebuild (prompt decision 8).
+export const dynamic = "force-dynamic";
+
+// Categories mirror the reference home page chip row. Static for now.
+const CATEGORIES = [
+  "World Cup",
+  "IPL",
+  "Social Media",
+  "Business & Markets",
+  "Health & Medicine",
+  "Soccer",
+  "Artificial Intelligence",
+  "Arsenal FC",
+  "Extreme Weather",
+];
+
+export default async function HomePage() {
+  const articles = await getTopArticles();
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    // Force the brand dark palette on the home page regardless of OS preference.
+    <div className="dark flex-1 bg-bg-app text-text-primary flex flex-col font-sans">
+      {/* Header */}
+      <header className="border-b border-border-strong bg-surface-app">
+        <div className="brand-container flex items-center justify-between py-4">
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center justify-center w-8 h-8 rounded-brand-sm bg-accent-app text-on-accent">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                className="w-5 h-5"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M14.615 1.595a.75.75 0 01.359.852L12.982 9.75h7.268a.75.75 0 01.548 1.262l-10.5 11.25a.75.75 0 01-1.272-.71l1.992-7.302H3.75a.75.75 0 01-.548-1.262l10.5-11.25a.75.75 0 01.913-.143z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </div>
+            <span className="font-bold text-lg tracking-tight">SKEEM NEWS</span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Link
+              href="/design-system"
+              className="hidden sm:inline-flex items-center gap-2 px-4 py-2 border border-accent-app text-accent-app rounded-brand-sm hover:bg-accent-app hover:text-on-accent transition-all duration-200 text-body-small font-medium font-mono"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+              Design System →
+            </Link>
+            <AuthControls />
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        {/* Category chip row */}
+        <div className="brand-container border-t border-border-subtle py-3">
+          <CategoryChipRow categories={CATEGORIES} />
         </div>
+      </header>
+
+      {/* Top News grid */}
+      <main className="brand-container flex-1 w-full py-10">
+        <h2 className="text-h3 md:text-h2 font-bold tracking-tight mb-8">
+          Top News
+        </h2>
+
+        {articles.length === 0 ? (
+          <div className="rounded-brand-md border border-border-subtle bg-surface-app p-10 text-center">
+            <p className="text-body-medium text-text-secondary">
+              No analyzed articles yet.
+            </p>
+            <p className="mt-1 font-mono text-caption text-text-tertiary">
+              No analyzed articles yet - check back later.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {articles.map((article) => (
+              <StoryCard key={article.id} article={article} />
+            ))}
+          </div>
+        )}
       </main>
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }

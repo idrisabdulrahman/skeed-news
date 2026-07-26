@@ -1,0 +1,52 @@
+[
+  {
+    "event_name": "article_clicked",
+    "event_description": "Fired when a user clicks on a news article card on the home page.",
+    "file": "components/StoryCard.tsx"
+  },
+  {
+    "event_name": "article_analysis_viewed",
+    "event_description": "Fired when a signed-in user lands on an article details page and sees the full AI analysis — top of the authenticated content funnel.",
+    "file": "app/news/[slug]/page.tsx"
+  },
+  {
+    "event_name": "analysis_gate_sign_in_clicked",
+    "event_description": "Fired when a signed-out visitor clicks the Sign in button on the article analysis gate.",
+    "file": "components/AnalysisGate.tsx"
+  },
+  {
+    "event_name": "analysis_gate_sign_up_clicked",
+    "event_description": "Fired when a signed-out visitor clicks the Create account button on the article analysis gate.",
+    "file": "components/AnalysisGate.tsx"
+  },
+  {
+    "event_name": "newsletter_subscribe_clicked",
+    "event_description": "Fired when a user clicks the Subscribe button on the newsletter CTA section.",
+    "file": "components/NewsletterCta.tsx"
+  },
+  {
+    "event_name": "article_saved",
+    "event_description": "Fired when a signed-in user clicks the Save button on an article details page.",
+    "file": "app/news/[slug]/page.tsx"
+  },
+  {
+    "event_name": "article_shared",
+    "event_description": "Fired when a signed-in user clicks the Share button on an article details page.",
+    "file": "app/news/[slug]/page.tsx"
+  },
+  {
+    "event_name": "related_article_clicked",
+    "event_description": "Fired when a user clicks on a related story card on an article details page.",
+    "file": "components/RelatedStoryCard.tsx"
+  },
+  {
+    "event_name": "scrape_pipeline_triggered",
+    "event_description": "Server-side event fired when the manual scrape pipeline is invoked via POST /api/scrape.",
+    "file": "app/api/scrape/route.ts"
+  },
+  {
+    "event_name": "analysis_pipeline_triggered",
+    "event_description": "Server-side event fired when the AI analysis pipeline is invoked via POST /api/analyze.",
+    "file": "app/api/analyze/route.ts"
+  }
+]
