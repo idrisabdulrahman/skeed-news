@@ -1,13 +1,6 @@
 import { z } from "zod";
 
-// Zod schema for the structured analysis Gemini must return (AGENTS.md §19).
-// This is the model-facing contract: field names are described so the model
-// fills them correctly, and every constraint here is validated before anything
-// is saved (§19 "Validate AI output with Zod before saving"). No z.union /
-// z.record — Google structured output mode rejects them (AI SDK provider docs).
 
-// Label unions mirror lib/types/article.ts exactly so the DB check constraints
-// and UI never see a value they don't expect.
 export const sentimentLabelSchema = z.enum(["positive", "neutral", "negative"]);
 export const politicalFramingLabelSchema = z.enum([
   "left",
