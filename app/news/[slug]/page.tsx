@@ -14,6 +14,7 @@ import { RelatedStoryCard } from "@/components/RelatedStoryCard";
 import { NewsletterCta } from "@/components/NewsletterCta";
 import { ArticleActions } from "@/components/ArticleActions";
 import { ArticleAnalysisViewTracker } from "@/components/ArticleAnalysisViewTracker";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { getArticleBySlug } from "@/lib/supabase/queries/articles";
 
 // Render on demand: manually inserted articles won't exist at build time, so we
@@ -86,24 +87,29 @@ export default async function NewsDetailsPage({
   });
 
   return (
-    // Force the brand dark palette, consistent with the home page.
-    <div className="dark flex-1 bg-bg-app text-text-primary flex flex-col font-sans">
+    // Default to the brand dark palette; ThemeToggle flips this class client-side.
+    <div id="theme-root" className="dark flex-1 bg-bg-app text-text-primary flex flex-col font-sans">
       {/* Header */}
       <header className="border-b border-border-strong bg-surface-app">
         <div className="brand-container flex items-center justify-between py-4">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center w-8 h-8 rounded-brand-sm bg-accent-app text-on-accent">
-              <BoltIcon className="w-5 h-5" />
-            </div>
-            <span className="font-bold text-lg tracking-tight">SKEEM NEWS</span>
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link href="/" className="flex items-center gap-2.5">
+              <div className="flex items-center justify-center w-8 h-8 rounded-brand-sm bg-accent-app text-on-accent">
+                <BoltIcon className="w-5 h-5" />
+              </div>
+              <span className="font-bold text-lg tracking-tight">SKEEM NEWS</span>
+            </Link>
+          </div>
 
-          <Link
-            href="/design-system"
-            className="inline-flex items-center gap-2 px-4 py-2 border border-accent-app text-accent-app rounded-brand-sm hover:bg-accent-app hover:text-on-accent transition-all duration-200 text-body-small font-medium font-mono"
-          >
-            Design System →
-          </Link>
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+            {/* <Link
+              href="/design-system"
+              className="inline-flex items-center gap-2 px-4 py-2 border border-accent-app text-accent-app rounded-brand-sm hover:bg-accent-app hover:text-on-accent transition-all duration-200 text-body-small font-medium font-mono"
+            >
+              Design System →
+            </Link> */}
+          </div>
         </div>
 
         <div className="brand-container border-t border-border-subtle py-3">
@@ -127,6 +133,14 @@ export default async function NewsDetailsPage({
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-8">
           {/* Main column */}
           <article className="min-w-0">
+            {/* Back to home */}
+            <Link
+              href="/"
+              className="inline-flex items-left gap-1.5 mb-5 px-3 py-2 border border-none text-text-secondary rounded-brand-sm hover:text-accent-app hover:border-accent-app transition-all duration-200 text-body-small font-medium"
+            >
+              ← Back to home
+            </Link>
+
             {/* Breadcrumb tag line */}
             <p className="font-mono text-caption text-text-tertiary mb-3">
               <span className="text-text-secondary">{article.sourceCategory}</span>

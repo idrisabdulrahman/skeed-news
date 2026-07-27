@@ -38,6 +38,21 @@
   --accent-app: #E8B54B;
 }
 
+/* Explicit light palette so a `.light` toggle forces light even when the OS
+   prefers-color-scheme is dark (otherwise it inherits dark from :root below). */
+.light {
+  --bg-app: #FFFFFF;
+  --surface-app: #F6F7F8;
+  --text-primary: #14171A;
+  --text-secondary: #434846;
+  --text-tertiary: #6A7270;
+  --text-quaternary: #A0A6A3;
+  --border-strong: #E6E8E6;
+  --border-subtle: #ECEFF1;
+  --accent-app: #EBB54B;
+  --on-accent: #0A0B0A;
+}
+
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
     --bg-app: #0A0B0A;
