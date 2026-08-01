@@ -70,7 +70,7 @@ Manual and scheduled scraping share the **same pipeline** — the only differenc
 | Auth           | Clerk                                                       |
 | Database       | Supabase (Postgres + pgvector)                              |
 | Scraping       | Direct fetch or Oxylabs Web Scraper API + Scheduler, Cheerio |
-| AI             | Vercel AI SDK — Google Gemini (`gemini-2.5-flash` analysis, `gemini-embedding-001` embeddings) |
+| AI             | Vercel AI SDK via OpenRouter (`google/gemini-2.5-flash` analysis, `text-embedding-3-small` embeddings) |
 | Validation     | Zod                                                         |
 | Styling        | Tailwind CSS v4 + shadcn/ui                                 |
 | Scheduling     | Vercel Cron / GitHub Actions                                |
@@ -117,7 +117,7 @@ Copy it to `.env.local`, then add the rest of your credentials. The canonical va
 | `SUPABASE_SERVICE_ROLE_KEY` | Service-role DB access for writes and pipeline reads | server only |
 | `OXY_WSA_USERNAME` / `OXY_WSA_PASSWORD` | Oxylabs Web Scraper API + Scheduler auth (only if `SCRAPER_PROVIDER=oxylabs`) | server only |
 | `SCRAPER_PROVIDER` | Scraper HTML source: `direct` (free, branch default) or `oxylabs` (paid) | server only |
-| `GOOGLE_GENERATIVE_AI_API_KEY` | AI analysis + embeddings via `@ai-sdk/google` | server only |
+| `OPENROUTER_API_KEY` | AI analysis (`google/gemini-2.5-flash`) + embeddings (`text-embedding-3-small`) via OpenRouter | server only |
 | `SKEEM_ADMIN_SECRET` | Shared secret for the `x-skeem-admin-secret` header on action routes | server only |
 | `ANALYSIS_BATCH_SIZE` | Optional; articles analyzed per batch (default 5) | server only |
 | `CRON_SECRET` | Protects `GET /api/cron/pipeline`; injected by Vercel — **do not add to `.env.local`** | server only |
@@ -152,7 +152,7 @@ curl -X POST http://localhost:3000/api/analyze \
 
 You can scope a scrape with a JSON body, e.g. `{"perSource": 3}`.
 
-Once deployed, the pipeline runs on its own: an hourly schedule fetches every active source homepage, inserts new articles, and analyzes whatever is pending. See `AGENTS.md` §18 for the full automatic-pipeline flow.
+Once deployed, the pipeline runs on its own: an hourly schedule fetches every active source homepage, inserts new articles, and analyzes whatever is pending. See `AGENTS.md` §18 for the full automatic-pipeline flow. On GitHub-hosted deploys the hourly trigger is `.github/workflows/pipeline.yml`, which needs two **repo secrets** (Settings → Secrets and variables → Actions): `APP_URL` (deployed origin, no scheme) and `SKEEM_ADMIN_SECRET` (same value as the env var). On Vercel, configure `vercel.json` + `CRON_SECRET` instead.
 
 ## API routes
 

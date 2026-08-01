@@ -1,4 +1,5 @@
 import React from "react";
+import { BiasTrack } from "@/components/BiasTrack";
 
 export interface BiasMeterProps {
   left?: number;
@@ -22,35 +23,11 @@ export const BiasMeter: React.FC<BiasMeterProps> = ({
   return (
     <div className={`w-full ${className}`}>
       {/* Hairline data track — same quiet voice as the CompactBiasBar */}
-      <div className="flex w-full h-1.5 overflow-hidden bg-border-subtle">
-        {leftPercent > 0 && (
-          <div
-            style={{ width: `${leftPercent}%` }}
-            className="h-full bg-breaking"
-          />
-        )}
-
-        {centerPercent > 0 && (
-          <div
-            style={{ width: `${centerPercent}%` }}
-            className="h-full"
-          />
-        )}
-
-        {rightPercent > 0 && (
-          <div
-            style={{ width: `${rightPercent}%` }}
-            className="h-full bg-info"
-          />
-        )}
-      </div>
-
-      {/* L/C/R numerals */}
-      <div className="flex justify-between items-center mt-2 text-caption text-text-tertiary tabular-nums">
-        <span>Left {leftPercent}%</span>
-        <span>Center {centerPercent}%</span>
-        <span>Right {rightPercent}%</span>
-      </div>
+      <BiasTrack
+        leftPercent={leftPercent}
+        centerPercent={centerPercent}
+        rightPercent={rightPercent}
+      />
     </div>
   );
 };

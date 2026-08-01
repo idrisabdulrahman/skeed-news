@@ -2,7 +2,10 @@
 
 import { useSyncExternalStore } from "react";
 
-const STORAGE_KEY = "skeem-theme";
+// The localStorage key for the persisted theme. Exported so layout.tsx's
+// pre-paint script interpolates the same value — a rename can't leave the two
+// out of sync (that would silently break theme persistence).
+export const STORAGE_KEY = "skeem-theme";
 type Theme = "dark" | "light";
 
 // The theme store is the `dark`/`light` class on <html>, set by the blocking
