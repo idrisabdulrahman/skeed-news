@@ -2,15 +2,16 @@ import { NextResponse } from "next/server";
 import { requireAdminSecret } from "@/lib/http/admin-auth";
 import { getActiveSources } from "@/lib/supabase/queries/sources";
 import { runScrapePipeline } from "@/lib/pipeline/scrape";
-import { scrapeHtml } from "@/lib/scraping/oxylabs";
+import { scrapeHtml } from "@/lib/scraping/provider";
 import { DEFAULT_PER_SOURCE } from "@/lib/pipeline/limits";
 import { getPostHogClient } from "@/lib/posthog-server";
 import type { SourceRow } from "@/lib/supabase/types";
 
 // POST /api/scrape — manual scrape-to-insert action (AGENTS.md §16).
-// Thin handler: auth → parse body → build the live Oxylabs provider → run the
-// provider-agnostic pipeline → return the §9 summary. All scraping/parsing/DB
-// logic lives in lib/ (§5). Admin-secret protected (§15).
+// Thin handler: auth → parse body → build the live provider (SCRAPER_PROVIDER:
+// direct or oxylabs) → run the provider-agnostic pipeline → return the §9
+// summary. All scraping/parsing/DB logic lives in lib/ (§5). Admin-secret
+// protected (§15).
 
 // Scraping is long-running and does live network I/O; never cache/prerender.
 export const dynamic = "force-dynamic";
@@ -72,9 +73,6 @@ export async function POST(req: Request): Promise<NextResponse> {
   const summary = await runScrapePipeline({
     sources,
     perSource,
-    // Live Oxylabs providers — the reuse seam. Homepage and detail HTML both
-    // come from a live fetch here; the scheduler (§18) will pass different
-    // providers to the same pipeline.
     getHomepageHtml: (source) => scrapeHtml(source.listing_url),
     getDetailHtml: (url) => scrapeHtml(url),
   });

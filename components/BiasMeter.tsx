@@ -20,45 +20,36 @@ export const BiasMeter: React.FC<BiasMeterProps> = ({
   const rightPercent = total > 0 ? 100 - leftPercent - centerPercent : 0; // ensure exactly 100% total
 
   return (
-    <div className={`w-full font-sans ${className}`}>
-      {/* Horizontal Bar container */}
-      <div className="relative flex w-full h-10 overflow-hidden rounded-brand-sm border border-border-strong select-none">
-        {/* Left (Red) */}
+    <div className={`w-full ${className}`}>
+      {/* Hairline data track — same quiet voice as the CompactBiasBar */}
+      <div className="flex w-full h-1.5 overflow-hidden bg-border-subtle">
         {leftPercent > 0 && (
           <div
             style={{ width: `${leftPercent}%` }}
-            className="flex items-center pl-3 bg-breaking text-white text-body-small font-semibold transition-all duration-500 ease-out"
-          >
-            <span className="truncate">Left {leftPercent}%</span>
-          </div>
+            className="h-full bg-breaking"
+          />
         )}
 
-        {/* Center (Gray) */}
         {centerPercent > 0 && (
           <div
             style={{ width: `${centerPercent}%` }}
-            className="flex items-center justify-center bg-surface-app border-x border-border-strong text-text-primary text-body-small font-semibold transition-all duration-500 ease-out"
-          >
-            <span className="truncate">Center {centerPercent}%</span>
-          </div>
+            className="h-full"
+          />
         )}
 
-        {/* Right (Blue) */}
         {rightPercent > 0 && (
           <div
             style={{ width: `${rightPercent}%` }}
-            className="flex items-center justify-end pr-3 bg-info text-white text-body-small font-semibold transition-all duration-500 ease-out"
-          >
-            <span className="truncate">Right {rightPercent}%</span>
-          </div>
+            className="h-full bg-info"
+          />
         )}
       </div>
 
-      {/* Axis Scale */}
-      <div className="flex justify-between items-center mt-2 px-1 text-caption text-text-tertiary font-mono">
-        <span>0%</span>
-        <span>50%</span>
-        <span>100%</span>
+      {/* L/C/R numerals */}
+      <div className="flex justify-between items-center mt-2 text-caption text-text-tertiary tabular-nums">
+        <span>Left {leftPercent}%</span>
+        <span>Center {centerPercent}%</span>
+        <span>Right {rightPercent}%</span>
       </div>
     </div>
   );

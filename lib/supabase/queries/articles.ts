@@ -43,6 +43,25 @@ function firstAnalysis(
   return Array.isArray(value) ? value[0] ?? null : value;
 }
 
+// PostgREST returns pgvector columns as JSON-encoded strings (e.g.
+// "[0.0147,-0.0427,…]") despite the number[] type in lib/supabase/types.ts —
+// passing that raw string on caused a double-encode in getRelatedArticles and
+// silently hid the Related Stories section (§20). Normalise both runtime forms
+// here, once, at the query seam. [] when missing or unparseable, which keeps
+// callers (and the section) safe.
+function parseEmbedding(value: string | number[] | null): number[] {
+  if (Array.isArray(value)) return value;
+  if (!value) return [];
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed) && parsed.every((n) => typeof n === "number")
+      ? (parsed as number[])
+      : [];
+  } catch {
+    return [];
+  }
+}
+
 // UI-only fields not backed by the schema get documented defaults (prompt
 // decision 7) rather than speculative columns.
 function toArticleCard(
@@ -205,10 +224,9 @@ export async function getArticleBySlug(
 
   // §20: related articles by cosine similarity. Only when this article has an
   // embedding — otherwise there is nothing to compare, so the section stays hidden.
+  const embedding = parseEmbedding(analysis.embedding);
   const related =
-    analysis.embedding && analysis.embedding.length > 0
-      ? await getRelatedArticles(row.id, analysis.embedding)
-      : [];
+    embedding.length > 0 ? await getRelatedArticles(row.id, embedding) : [];
 
   return toArticleDetail(row, analysis, related);
 }
@@ -386,7 +404,7 @@ export async function getPendingArticles(opts?: {
         rawText: row.raw_text,
         needsAnalysis: true,
       });
-    } else if (!analysis.embedding || analysis.embedding.length === 0) {
+    } else if (parseEmbedding(analysis.embedding).length === 0) {
       // Analysis exists but no embedding → backfill only (§20).
       pending.push({
         id: row.id,

@@ -79,7 +79,9 @@ export type ArticleAnalysisRow = {
   model: string;
   created_at: string;
   // pgvector embedding (§20). Nullable: the analysis row can precede the
-  // embedding backfill. supabase-js returns it as number[] (or null).
+  // embedding backfill. NOTE: PostgREST returns pgvector columns as a
+  // JSON-encoded string (e.g. "[0.1,-0.2,…]"), not number[] — callers must
+  // normalise with parseEmbedding in lib/supabase/queries/articles.ts.
   embedding: number[] | null;
 }
 export type ArticleAnalysisInsert = {
@@ -160,6 +162,22 @@ export type OxylabsScheduleRunInsert = {
   created_at?: string;
 }
 
+// ─── saved_articles ─────────────────────────────────────────────────────────
+// Per-user bookmarks (Save button). user_id is the Clerk userId string — no
+// FK to a users table (Clerk owns user data, §6).
+export type SavedArticleRow = {
+  id: string;
+  user_id: string;
+  article_id: string;
+  created_at: string;
+}
+export type SavedArticleInsert = {
+  id?: string;
+  user_id: string;
+  article_id: string;
+  created_at?: string;
+}
+
 // ─── Database aggregate (supabase-js convention) ────────────────────────────
 // The full GenericSchema shape (Tables + Views + Functions + Enums +
 // CompositeTypes) is required — if any key is missing, supabase-js fails the
@@ -203,6 +221,12 @@ export interface Database {
         Row: OxylabsScheduleRunRow;
         Insert: OxylabsScheduleRunInsert;
         Update: Partial<OxylabsScheduleRunInsert>;
+        Relationships: [];
+      };
+      saved_articles: {
+        Row: SavedArticleRow;
+        Insert: SavedArticleInsert;
+        Update: Partial<SavedArticleInsert>;
         Relationships: [];
       };
     };

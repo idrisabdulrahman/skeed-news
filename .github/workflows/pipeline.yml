@@ -1,0 +1,30 @@
+# Hourly free pipeline scheduler (replaces Vercel Pro cron).
+# Scrapes with the app's active provider (SCRAPER_PROVIDER=direct by default on
+# this branch) then analyzes pending articles. Schedule triggers only fire on
+# the default branch (main). Requires repo secrets: APP_URL + SKEEM_ADMIN_SECRET.
+name: skeem hourly pipeline
+
+on:
+  schedule:
+    - cron: "15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scrape
+        run: |
+          curl -sS -X POST "https://${{ secrets.APP_URL }}/api/scrape" \
+            -H "Content-Type: application/json" \
+            -H "x-skeem-admin-secret: ${{ secrets.SKEEM_ADMIN_SECRET }}" \
+            -d '{"perSource":3}'
+      - name: Analyze pending
+        run: |
+          curl -sS -X POST "https://${{ secrets.APP_URL }}/api/analyze" \
+            -H "Content-Type: application/json" \
+            -H "x-skeem-admin-secret: ${{ secrets.SKEEM_ADMIN_SECRET }}" \
+            -d '{}'

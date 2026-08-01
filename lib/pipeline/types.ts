@@ -13,7 +13,7 @@ export type RejectionReason =
   | "not_article_shaped_url" // did not look like an article detail URL (§12)
   | "duplicate_in_db" // original_url already stored (§9/§10)
   | "duplicate_in_batch" // seen earlier in this same run
-  | "detail_scrape_failed" // Oxylabs failed for the detail page
+  | "detail_scrape_failed" // the scraper provider failed for the detail page
   | "missing_image" // no image_url (§7/§13)
   | "missing_published_at" // no published date (§7/§13)
   | "generic_title" // title is a category/section/show name (§13)
@@ -22,8 +22,9 @@ export type RejectionReason =
 
 /**
  * Signature for supplying a source's homepage HTML. This is the seam that lets
- * the same engine serve manual scraping (live Oxylabs fetch) and, later, the
- * scheduler (completed Oxylabs job results) with no other change (§18).
+ * the same engine serve manual scraping (live provider fetch — direct or
+ * Oxylabs) and the scheduler (completed Oxylabs job results) with no other
+ * change (§18).
  */
 export type HomepageHtmlProvider = (source: SourceRow) => Promise<string>;
 

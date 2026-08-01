@@ -16,6 +16,7 @@ import { ArticleActions } from "@/components/ArticleActions";
 import { ArticleAnalysisViewTracker } from "@/components/ArticleAnalysisViewTracker";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { getArticleBySlug } from "@/lib/supabase/queries/articles";
+import { getSavedArticleIds } from "@/lib/supabase/queries/saved";
 
 // Render on demand: manually inserted articles won't exist at build time, so we
 // skip static prerendering and read fresh per request (prompt decision 8).
@@ -34,7 +35,7 @@ const CATEGORIES = [
   "Extreme Weather",
 ];
 
-// Bolt mark shared with the home page header/footer.
+// Bolt mark shared with the home page masthead/footer.
 const BoltIcon = ({ className = "" }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
     <path
@@ -80,69 +81,81 @@ export default async function NewsDetailsPage({
   const { userId } = await auth();
   const isSignedIn = Boolean(userId);
 
+  // Bookmark state for the Save button, rendered server-side so the icon never
+  // flashes empty before hydration. Only queried when signed in.
+  const savedArticleIds = userId ? await getSavedArticleIds(userId) : [];
+  const initialSaved = savedArticleIds.includes(article.id);
+
   const publishedLabel = new Date(article.publishedAt).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
   });
 
+  const todayLabel = new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+
   return (
-    // Default to the brand dark palette; ThemeToggle flips this class client-side.
-    <div id="theme-root" className="dark flex-1 bg-bg-app text-text-primary flex flex-col font-sans">
-      {/* Header */}
-      <header className="border-b border-border-strong bg-surface-app">
-        <div className="brand-container flex items-center justify-between py-4">
-          <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center gap-2.5">
-              <div className="flex items-center justify-center w-8 h-8 rounded-brand-sm bg-accent-app text-on-accent">
+    // Theme class is set on <html> by the blocking pre-paint script in
+    // layout.tsx (no light-then-dark flash). #theme-root carries layout only.
+    <div id="theme-root" className="flex-1 bg-bg-app text-text-primary flex flex-col font-sans">
+      {/* N6 masthead — same as home: date · centred wordmark · theme toggle */}
+      <header>
+        <div className="brand-container">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 py-4">
+            <p className="text-caption text-text-tertiary tabular-nums hidden sm:block">
+              {todayLabel}
+            </p>
+
+            <Link href="/" className="flex items-center gap-2.5 justify-self-center">
+              <span className="flex items-center justify-center w-8 h-8 rounded-brand-sm bg-accent-app text-on-accent">
                 <BoltIcon className="w-5 h-5" />
-              </div>
+              </span>
               <span className="font-bold text-lg tracking-tight">SKEEM NEWS</span>
             </Link>
+
+            <div className="flex items-center gap-2.5 justify-self-end">
+              <ThemeToggle />
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <ThemeToggle />
-            {/* <Link
-              href="/design-system"
-              className="inline-flex items-center gap-2 px-4 py-2 border border-accent-app text-accent-app rounded-brand-sm hover:bg-accent-app hover:text-on-accent transition-all duration-200 text-body-small font-medium font-mono"
-            >
-              Design System →
-            </Link> */}
-          </div>
+          <nav aria-label="Sections" className="border-t border-border-subtle py-3">
+            <CategoryChipRow categories={CATEGORIES} />
+          </nav>
         </div>
-
-        <div className="brand-container border-t border-border-subtle py-3">
-          <CategoryChipRow categories={CATEGORIES} />
-        </div>
+        <div className="border-t border-border-strong" />
       </header>
 
       {/* Article + sidebar (gated) */}
       {!isSignedIn ? (
-        <main className="brand-container flex-1 w-full py-10">
+        <main className="brand-container flex-1 w-full py-12">
           <AnalysisGate title={article.title} />
         </main>
       ) : (
-      <main className="brand-container flex-1 w-full py-10">
+      <main className="brand-container flex-1 w-full py-12">
         <ArticleAnalysisViewTracker
           articleSlug={article.slug}
           articleTitle={article.title}
           biasLabel={article.biasLabel}
           sentimentLabel={article.sentimentLabel}
         />
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-8">
-          {/* Main column */}
-          <article className="min-w-0">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-8 lg:gap-12">
+          {/* Main column — Long Document measure (65ch) */}
+          <article className="min-w-0 max-w-[65ch]">
             {/* Back to home */}
             <Link
               href="/"
-              className="inline-flex items-left gap-1.5 mb-5 px-3 py-2 border border-none text-text-secondary rounded-brand-sm hover:text-accent-app hover:border-accent-app transition-all duration-200 text-body-small font-medium"
+              className="inline-flex items-center gap-1.5 mb-5 text-body-small text-text-secondary hover:text-accent-app transition-colors duration-200"
             >
               ← Back to home
             </Link>
 
             {/* Breadcrumb tag line */}
-            <p className="font-mono text-caption text-text-tertiary mb-3">
+            <p className="text-caption text-text-tertiary mb-3">
               <span className="text-text-secondary">{article.sourceCategory}</span>
               <span className="mx-1.5">·</span>
               <span>{article.region}</span>
@@ -155,7 +168,7 @@ export default async function NewsDetailsPage({
 
             {/* Byline row */}
             <div className="flex flex-wrap items-center justify-between gap-3 pb-5 mb-5 border-b border-border-subtle">
-              <div className="flex items-center gap-2 font-mono text-caption text-text-tertiary">
+              <div className="flex items-center gap-2 text-caption text-text-tertiary tabular-nums">
                 <span>By {article.author}</span>
                 <span className="text-border-strong">|</span>
                 <span>{publishedLabel}</span>
@@ -164,12 +177,18 @@ export default async function NewsDetailsPage({
               </div>
 
               {/* Article actions: save + share with PostHog tracking */}
-              <ArticleActions articleSlug={article.slug} articleTitle={article.title} />
+              <ArticleActions
+                articleId={article.id}
+                articleSlug={article.slug}
+                articleTitle={article.title}
+                isSignedIn={isSignedIn}
+                initialSaved={initialSaved}
+              />
             </div>
 
-            {/* Hero image */}
+            {/* Hero image — sharp hairline frame */}
             <figure className="mb-6">
-              <div className="relative w-full aspect-[16/9] overflow-hidden rounded-brand-md border border-border-subtle">
+              <div className="relative w-full aspect-[16/9] overflow-hidden border border-border-subtle">
                 <Image
                   src={article.imageUrl}
                   alt={article.title}
@@ -186,17 +205,17 @@ export default async function NewsDetailsPage({
               )}
             </figure>
 
-            {/* Bias Distribution block */}
-            <div className="rounded-brand-md border border-border-subtle bg-surface-app p-5 mb-8">
-              <div className="flex items-center gap-2 mb-3">
-                <h2 className="text-h4 font-semibold text-text-primary">Bias Distribution</h2>
-              </div>
+            {/* Bias Distribution block — quiet hairline panel */}
+            <div className="border border-border-subtle p-5 mb-8">
+              <h2 className="text-h4 font-semibold text-text-primary mb-3">
+                Bias distribution
+              </h2>
               <BiasMeter
                 left={article.leftPercentage}
                 center={article.centerPercentage}
                 right={article.rightPercentage}
               />
-              <p className="mt-3 font-mono text-caption text-text-tertiary">
+              <p className="mt-3 text-caption text-text-tertiary tabular-nums">
                 {article.sourcesCount} sources
               </p>
             </div>
@@ -204,7 +223,7 @@ export default async function NewsDetailsPage({
             {/* Article body */}
             <div className="flex flex-col gap-6">
               {article.body.map((paragraph, i) => (
-                <p key={i} className="text-body-medium text-text-secondary leading-relaxed">
+                <p key={i} className="text-body-medium text-text-primary leading-relaxed">
                   {paragraph}
                 </p>
               ))}
@@ -214,7 +233,9 @@ export default async function NewsDetailsPage({
                 cosine-nearest matches exist (§20). Hidden otherwise. */}
             {article.relatedArticles.length > 0 && (
               <div className="mt-12 pt-8 border-t border-border-subtle">
-                <h2 className="text-h3 font-semibold text-text-primary mb-6">Related Stories</h2>
+                <h2 className="text-h4 font-semibold text-text-primary mb-6">
+                  Related stories
+                </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   {article.relatedArticles.map((related) => (
                     <RelatedStoryCard key={related.id} article={related} />

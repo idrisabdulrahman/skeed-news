@@ -6,15 +6,15 @@ export interface CategoryChipRowProps {
   className?: string;
 }
 
-// Horizontally scrollable row of category chips. Presentational for now —
-// chips are static until follow/filter behavior exists.
+// Centered wrapping row of sentence-case category links (N6 nav voice).
+// Presentational for now — chips are static until follow/filter behavior exists.
 export const CategoryChipRow: React.FC<CategoryChipRowProps> = ({
   categories,
   className = "",
 }) => {
   return (
     <div
-      className={`flex items-center gap-2 overflow-x-auto pb-1 ${className}`}
+      className={`flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 ${className}`}
     >
       {categories.map((category) => (
         <div key={category} className="flex-shrink-0">

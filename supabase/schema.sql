@@ -1,8 +1,9 @@
 -- Skeem News (biasly) — Supabase schema
 -- Source of truth for app data (AGENTS.md §7). Apply via Supabase Dashboard → SQL Editor.
 --
--- Covers the six core tables: sources, articles, article_analyses, logs,
--- oxylabs_schedules, oxylabs_schedule_runs.
+-- Covers the six core tables (sources, articles, article_analyses, logs,
+-- oxylabs_schedules, oxylabs_schedule_runs) plus the saved_articles
+-- user-bookmark table.
 --
 -- NOTE: the `embedding vector(1536)` column on article_analyses + the IVFFlat
 -- cosine index + the match_articles RPC are added per AGENTS.md §20 (pgvector).
@@ -154,6 +155,24 @@ create table if not exists public.oxylabs_schedule_runs (
 create index if not exists oxylabs_schedule_runs_schedule_idx on public.oxylabs_schedule_runs (schedule_id);
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- saved_articles
+-- Per-user article bookmarks (Save button on the details page). Auth is Clerk,
+-- not Supabase Auth (§6), so user_id is the Clerk `sub` string — no FK to a
+-- users table (Clerk owns user data). Composite unique (user_id, article_id)
+-- makes the toggle idempotent at the DB level; a racing double-save is a
+-- no-op, never a duplicate.
+-- ─────────────────────────────────────────────────────────────────────────────
+create table if not exists public.saved_articles (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     text not null,                          -- Clerk userId (auth().userId)
+  article_id  uuid not null references public.articles (id) on delete cascade,
+  created_at  timestamptz not null default now(),
+  unique (user_id, article_id)
+);
+
+create index if not exists saved_articles_user_id_idx on public.saved_articles (user_id);
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- Row Level Security
 -- ─────────────────────────────────────────────────────────────────────────────
 alter table public.sources               enable row level security;
@@ -162,6 +181,7 @@ alter table public.article_analyses      enable row level security;
 alter table public.logs                  enable row level security;
 alter table public.oxylabs_schedules     enable row level security;
 alter table public.oxylabs_schedule_runs enable row level security;
+alter table public.saved_articles        enable row level security;
 
 -- Public read for display tables. Writes go through the service-role client,
 -- which bypasses RLS, so no INSERT/UPDATE/DELETE policies are defined.
@@ -177,8 +197,13 @@ drop policy if exists "Public read article_analyses" on public.article_analyses;
 create policy "Public read article_analyses" on public.article_analyses
   for select to anon, authenticated using (true);
 
--- logs / oxylabs_schedules / oxylabs_schedule_runs: RLS enabled, no policies →
--- deny-all to anon/authenticated. Service-role access only.
+-- logs / oxylabs_schedules / oxylabs_schedule_runs / saved_articles: RLS
+-- enabled, no policies → deny-all to anon/authenticated. Service-role access
+-- only. saved_articles is user-private: app users are Clerk identities, not
+-- Supabase Auth users, so auth.jwt() is never populated — all bookmark
+-- reads/writes go through the service-role client, gated by Clerk auth()
+-- userId in /api/saved (§6). RLS is defense-in-depth against accidental
+-- exposure, not the primary gate.
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Data API grants

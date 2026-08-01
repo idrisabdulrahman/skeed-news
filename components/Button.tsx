@@ -13,28 +13,30 @@ export const Button: React.FC<ButtonProps> = ({
   disabled,
   ...props
 }) => {
-  // Base classes for consistent sizing, border-radius, font-family, transitions, and layout
-  const baseClass = "inline-flex items-center justify-center font-sans font-medium text-body-small rounded-brand-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent-app/50 disabled:opacity-50 disabled:pointer-events-none px-6 py-2.5 h-[42px]";
+  // Editorial button: rectangular, 44px target, ink primary / hairline secondary.
+  // Only colors transition (no transition-all); focus ring appears instantly via
+  // the global :focus-visible rule. Press feedback is an instant 1px sink.
+  const baseClass = "inline-flex items-center justify-center gap-2 font-sans font-medium text-body-small rounded-brand-sm focus:outline-none disabled:opacity-50 disabled:pointer-events-none px-5 h-11 select-none transition-colors duration-200 active:translate-y-px";
 
   let variantClass = "";
 
   if (variant === "primary") {
     if (isOutline) {
-      variantClass = "border border-accent-app text-accent-app bg-transparent hover:bg-accent-app hover:text-on-accent";
+      variantClass = "border border-text-primary text-text-primary bg-transparent hover:border-accent-app hover:text-accent-app";
     } else {
-      variantClass = "bg-accent-app text-on-accent border border-transparent hover:bg-transparent hover:border-accent-app hover:text-accent-app";
+      variantClass = "bg-text-primary text-bg-app border border-transparent hover:bg-accent-app hover:text-on-accent";
     }
   } else if (variant === "secondary") {
     if (isOutline) {
-      variantClass = "border border-border-strong text-text-primary bg-transparent hover:bg-surface-app";
+      variantClass = "border border-border-strong text-text-primary bg-transparent hover:border-text-tertiary hover:text-accent-app";
     } else {
-      variantClass = "bg-surface-app text-text-primary border border-transparent hover:bg-transparent hover:border-border-strong";
+      variantClass = "bg-surface-app text-text-primary border border-transparent hover:bg-bg-app hover:border-border-strong";
     }
   } else if (variant === "text") {
     if (isOutline) {
-      variantClass = "border border-border-strong text-accent-app bg-transparent hover:bg-surface-app";
+      variantClass = "border border-border-strong text-accent-app bg-transparent hover:border-accent-app";
     } else {
-      variantClass = "text-accent-app bg-transparent hover:bg-surface-app border border-transparent";
+      variantClass = "text-accent-app bg-transparent hover:underline border border-transparent";
     }
   }
 

@@ -8,16 +8,17 @@ export interface NewsletterCtaProps {
   className?: string;
 }
 
-// "Stay Informed. Stay Balanced." band with an email input + Subscribe button.
-// Presentational only — no submit handler, matches the reference layout.
+// "Stay informed. Stay balanced." hairline band with an underline email input +
+// ink Subscribe button. Presentational only — no submit handler, matches the
+// reference layout.
 export const NewsletterCta: React.FC<NewsletterCtaProps> = ({ className = "" }) => {
   return (
     <section
-      className={`rounded-brand-md border border-border-subtle bg-surface-app shadow-brand-md p-8 flex flex-col md:flex-row md:items-center md:justify-between gap-6 ${className}`}
+      className={`border border-border-subtle p-8 flex flex-col md:flex-row md:items-center md:justify-between gap-6 ${className}`}
     >
       <div>
-        <h3 className="text-h3 font-semibold text-text-primary mb-1">
-          Stay Informed. Stay Balanced.
+        <h3 className="text-h4 font-semibold text-text-primary mb-1">
+          Stay informed. Stay balanced.
         </h3>
         <p className="text-body-small text-text-secondary">
           Get the top stories and bias analysis delivered to your inbox.
@@ -32,7 +33,7 @@ export const NewsletterCta: React.FC<NewsletterCtaProps> = ({ className = "" }) 
           id="newsletter-email"
           type="email"
           placeholder="Enter your email"
-          className="flex-1 md:w-64 h-[42px] px-4 rounded-brand-sm bg-bg-app border border-border-strong text-body-small text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent-app/50"
+          className="flex-1 md:w-64 h-11 bg-transparent border-b border-border-strong text-body-small text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-app transition-colors duration-200"
         />
         <Button
           variant="primary"

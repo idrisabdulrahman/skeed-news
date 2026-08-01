@@ -1,0 +1,128 @@
+/* ============================================================
+   SKEEM NEWS · locked design tokens (Hallmark export)
+   Genre: editorial · macrostructures: Split Studio + Long Document
+   Theme: custom · light paper (current --bg-app) · cool-blue accent
+   Imported by app/globals.css. Do not restyle inline — change
+   tokens here and in design.md together.
+   ============================================================ */
+
+:root {
+  /* ---- Color · light (paper is #FFFFFF per spec: "use current background") ---- */
+  --bg-app: #FFFFFF;
+  --surface-app: oklch(96.8% 0.007 262);
+  --text-primary: oklch(24% 0.015 262);      /* ink, cool-tinted */
+  --text-secondary: oklch(40% 0.012 262);
+  --text-tertiary: oklch(52% 0.008 262);
+  --text-quaternary: oklch(64% 0.006 262);
+  --border-strong: oklch(87% 0.006 262);     /* hairlines, rules */
+  --border-subtle: oklch(92.5% 0.005 262);
+  --accent-app: oklch(51% 0.16 262);         /* cool cobalt */
+  --on-accent: oklch(99% 0.002 262);
+
+  /* ---- Color · semantic (data-viz roles; distinct from brand accent) ---- */
+  --breaking: oklch(55% 0.21 26);
+  --success: oklch(62% 0.19 152);
+  --info: oklch(58% 0.18 258);
+  --trending: oklch(60% 0.19 300);
+  --warning: oklch(70% 0.16 75);
+
+  /* ---- Type ---- */
+  --font-display: var(--font-geist-sans), sans-serif;
+  --font-body: var(--font-geist-sans), sans-serif;
+  --font-label: var(--font-geist-sans), sans-serif;
+
+  /* ---- Space (4pt scale) ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  /* ---- Motion ---- */
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
+  --ease-in-out: cubic-bezier(0.45, 0, 0.55, 1);
+  --dur-micro: 100ms;
+  --dur-short: 180ms;
+  --dur-long: 300ms;
+
+  /* ---- Rules (editorial hairlines) ---- */
+  --rule-hairline: 1px solid var(--border-strong);
+  --rule-subtle: 1px solid var(--border-subtle);
+
+  /* ---- Layer ---- */
+  --z-base: 0;
+  --z-raised: 10;
+  --z-header: 20;
+  --z-overlay: 30;
+}
+
+/* ---- Color · dark (cool-blue-tinted paper, higher lightness + lower
+   chroma on the same 262–265 hue; accent lifts for dark surfaces) ---- */
+.dark {
+  --bg-app: oklch(15% 0.014 265);
+  --surface-app: oklch(19% 0.014 265);
+  --text-primary: oklch(92% 0.008 262);
+  --text-secondary: oklch(76% 0.006 262);
+  --text-tertiary: oklch(62% 0.006 262);
+  --text-quaternary: oklch(50% 0.005 262);
+  --border-strong: oklch(30% 0.012 265);
+  --border-subtle: oklch(25% 0.01 265);
+  --accent-app: oklch(72% 0.12 258);
+  --on-accent: oklch(16% 0.02 265);
+
+  --breaking: oklch(64% 0.2 26);
+  --success: oklch(70% 0.17 152);
+  --info: oklch(70% 0.15 258);
+  --trending: oklch(70% 0.17 300);
+  --warning: oklch(78% 0.14 75);
+}
+
+/* Explicit light palette so a `.light` toggle forces light even when the OS
+   prefers-color-scheme is dark (otherwise it inherits dark from :root below). */
+.light {
+  --bg-app: #FFFFFF;
+  --surface-app: oklch(96.8% 0.007 262);
+  --text-primary: oklch(24% 0.015 262);
+  --text-secondary: oklch(40% 0.012 262);
+  --text-tertiary: oklch(52% 0.008 262);
+  --text-quaternary: oklch(64% 0.006 262);
+  --border-strong: oklch(87% 0.006 262);
+  --border-subtle: oklch(92.5% 0.005 262);
+  --accent-app: oklch(51% 0.16 262);
+  --on-accent: oklch(99% 0.002 262);
+
+  --breaking: oklch(55% 0.21 26);
+  --success: oklch(62% 0.19 152);
+  --info: oklch(58% 0.18 258);
+  --trending: oklch(60% 0.19 300);
+  --warning: oklch(70% 0.16 75);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --bg-app: oklch(15% 0.014 265);
+    --surface-app: oklch(19% 0.014 265);
+    --text-primary: oklch(92% 0.008 262);
+    --text-secondary: oklch(76% 0.006 262);
+    --text-tertiary: oklch(62% 0.006 262);
+    --text-quaternary: oklch(50% 0.005 262);
+    --border-strong: oklch(30% 0.012 265);
+    --border-subtle: oklch(25% 0.01 265);
+    --accent-app: oklch(72% 0.12 258);
+    --on-accent: oklch(16% 0.02 265);
+
+    --breaking: oklch(64% 0.2 26);
+    --success: oklch(70% 0.17 152);
+    --info: oklch(70% 0.15 258);
+    --trending: oklch(70% 0.17 300);
+    --warning: oklch(78% 0.14 75);
+  }
+}

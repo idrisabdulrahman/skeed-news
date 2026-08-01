@@ -1,35 +1,55 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 const STORAGE_KEY = "skeem-theme";
 type Theme = "dark" | "light";
 
-// Toggles the `dark`/`light` class on #theme-root (the details page root) and
-// persists the choice. Default is dark, matching SSR — returning users who chose
-// light see a one-frame flash on load, acceptable without adding next-themes.
+// The theme store is the `dark`/`light` class on <html>, set by the blocking
+// pre-paint script in layout.tsx (and by the toggle below). Reading it through
+// useSyncExternalStore keeps the icon in sync with the real page theme without
+// effects or hydration mismatches: during SSR/hydration React uses
+// getServerSnapshot ("light", matching the server-rendered markup), then
+// re-reads getSnapshot once mounted and re-renders with the actual theme.
+// `apply` fires the subscribers so React sees the new snapshot after a toggle.
+const subscribers = new Set<() => void>();
+
+function subscribe(callback: () => void): () => void {
+  subscribers.add(callback);
+  // Cross-tab changes (storage event from another tab) also re-render.
+  window.addEventListener("storage", callback);
+  return () => {
+    subscribers.delete(callback);
+    window.removeEventListener("storage", callback);
+  };
+}
+
+function getSnapshot(): Theme {
+  return document.documentElement.classList.contains("dark") ? "dark" : "light";
+}
+
+function getServerSnapshot(): Theme {
+  return "light";
+}
+
+function notify() {
+  for (const callback of subscribers) callback();
+}
+
+function apply(next: Theme) {
+  const root = document.documentElement;
+  root.classList.toggle("dark", next === "dark");
+  root.classList.toggle("light", next === "light");
+  root.style.colorScheme = next;
+  notify();
+}
+
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof window === "undefined") return "dark";
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return stored === "light" ? "light" : "dark";
-  });
-
-  useEffect(() => {
-    apply(theme);
-  }, [theme]);
-
-  function apply(next: Theme) {
-    const root = document.getElementById("theme-root");
-    if (!root) return;
-    root.classList.toggle("dark", next === "dark");
-    root.classList.toggle("light", next === "light");
-  }
+  const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   function toggle() {
     const next: Theme = theme === "dark" ? "light" : "dark";
     apply(next);
-    setTheme(next);
     localStorage.setItem(STORAGE_KEY, next);
   }
 
@@ -40,7 +60,7 @@ export function ThemeToggle() {
       type="button"
       onClick={toggle}
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-      className="inline-flex items-center justify-center w-9 h-9 border border-border-strong text-text-secondary rounded-brand-sm hover:text-accent-app hover:border-accent-app transition-all duration-200"
+      className="inline-flex items-center justify-center w-10 h-10 border border-border-strong text-text-secondary rounded-brand-sm hover:text-accent-app hover:border-accent-app transition-colors duration-200"
     >
       {isDark ? (
         // Sun
