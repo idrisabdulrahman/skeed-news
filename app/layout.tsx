@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Geist, JetBrains_Mono } from "next/font/google";
 import { PostHogUserIdentifier } from "@/components/PostHogUserIdentifier";
@@ -52,7 +53,15 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <head>
-          <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+          {/* next/script, not a raw <script> tag — React 19 warns on raw script
+              tags inside components. beforeInteractive injects this into the
+              initial HTML before hydration, preserving the blocking pre-paint
+              behavior (no light-then-dark flash). */}
+          <Script
+            id="theme-init"
+            strategy="beforeInteractive"
+            dangerouslySetInnerHTML={{ __html: themeInitScript }}
+          />
         </head>
         <body className="min-h-full flex flex-col">
           <PostHogUserIdentifier />
