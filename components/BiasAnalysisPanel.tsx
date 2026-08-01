@@ -20,14 +20,14 @@ interface RowProps {
   color?: string;
 }
 
-// One L/C/R row: label, percentage, and a thin horizontal bar.
+// One L/C/R row: label, percentage, and a thin hairline bar.
 const BiasRow: React.FC<RowProps> = ({ label, percent, color }) => (
   <div className="flex items-center gap-3">
     <span className="w-14 text-body-small text-text-secondary">{label}</span>
-    <span className="w-10 text-body-small font-mono text-text-primary">{percent}%</span>
-    <div className="flex-1 h-2 rounded-brand-full bg-bg-app overflow-hidden">
+    <span className="w-10 text-body-small tabular-nums text-text-primary">{percent}%</span>
+    <div className="flex-1 h-1.5 bg-border-subtle overflow-hidden">
       <div
-        className="h-full rounded-brand-full"
+        className="h-full"
         style={{
           width: `${percent}%`,
           backgroundColor: color ?? "var(--text-quaternary)",
@@ -57,11 +57,11 @@ export const BiasAnalysisPanel: React.FC<BiasAnalysisPanelProps> = ({
 
   return (
     <SidebarCard title="Bias Analysis" className={className}>
-      <p className="text-body-small text-text-secondary mb-1">Overall Bias</p>
-      <p className={`text-h2 font-bold leading-none mb-2 ${biasTextClass(biasLabel)}`}>
+      <p className="text-caption text-text-tertiary mb-1">Overall bias</p>
+      <p className={`text-h3 font-semibold leading-none mb-2 ${biasTextClass(biasLabel)}`}>
         {biasDisplayLabel(biasLabel)} {headlinePercent}%
       </p>
-      <p className="text-body-small text-info mb-5">
+      <p className="text-caption text-text-tertiary tabular-nums mb-5">
         Based on {sourcesCount} balanced sources
       </p>
 

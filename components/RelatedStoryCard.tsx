@@ -11,9 +11,20 @@ export interface RelatedStoryCardProps {
   className?: string;
 }
 
+// Tiny deterministic hash for the read-time estimate: maps a slug to a stable
+// integer. Display-only, so a simple char-code fold is plenty.
+function hashSlug(slug: string): number {
+  let h = 0;
+  for (let i = 0; i < slug.length; i++) {
+    h = (h * 31 + slug.charCodeAt(i)) >>> 0;
+  }
+  return h;
+}
+
 // Compact horizontal mini-card for the Related Stories grid: square thumbnail
 // on the left, then category · region, title, and date · read time. Estimates a
-// read time from the sources count so the meta line matches the reference.
+// read time from the slug so the meta line matches the reference without ever
+// rendering "NaN min read" (a UUID id is not a number).
 export const RelatedStoryCard: React.FC<RelatedStoryCardProps> = ({
   article,
   className = "",
@@ -28,13 +39,13 @@ export const RelatedStoryCard: React.FC<RelatedStoryCardProps> = ({
       })
     : null;
   // Deterministic read-time estimate (mock) so the meta line stays stable.
-  const readMinutes = 5 + (Number(article.id) % 6);
+  const readMinutes = 5 + (hashSlug(slug) % 6);
 
   return (
     <article className={`group flex gap-4 ${className}`}>
       <Link
         href={`/news/${slug}`}
-        className="relative w-20 h-20 flex-shrink-0 overflow-hidden rounded-brand-sm border border-border-subtle"
+        className="relative w-20 h-20 flex-shrink-0 overflow-hidden border border-border-subtle"
       >
         <Image
           src={imageUrl}
@@ -46,7 +57,7 @@ export const RelatedStoryCard: React.FC<RelatedStoryCardProps> = ({
       </Link>
 
       <div className="flex flex-col gap-1 min-w-0">
-        <span className="font-mono text-caption text-text-tertiary truncate">
+        <span className="text-caption text-text-tertiary truncate">
           <span className="text-text-secondary">{sourceCategory}</span>
           <span className="mx-1.5">·</span>
           <span>{region}</span>
@@ -55,7 +66,7 @@ export const RelatedStoryCard: React.FC<RelatedStoryCardProps> = ({
         <h4 className="text-body-small font-semibold text-text-primary leading-snug line-clamp-2">
           <Link
             href={`/news/${slug}`}
-            className="hover:text-accent-app transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-app/50 rounded-brand-sm"
+            className="hover:text-accent-app transition-colors duration-200"
             onClick={() =>
               posthog.capture("related_article_clicked", {
                 article_slug: slug,
@@ -69,7 +80,7 @@ export const RelatedStoryCard: React.FC<RelatedStoryCardProps> = ({
           </Link>
         </h4>
 
-        <span className="font-mono text-caption text-text-tertiary">
+        <span className="text-caption text-text-tertiary tabular-nums">
           {dateLabel && <span>{dateLabel}</span>}
           {dateLabel && <span className="mx-1.5">·</span>}
           <span>{readMinutes} min read</span>

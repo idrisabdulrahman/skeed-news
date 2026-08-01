@@ -5,14 +5,14 @@ import { useEffect, useState } from "react";
 const STORAGE_KEY = "skeem-theme";
 type Theme = "dark" | "light";
 
-// Toggles the `dark`/`light` class on #theme-root (the details page root) and
-// persists the choice. Default is dark, matching SSR — returning users who chose
-// light see a one-frame flash on load, acceptable without adding next-themes.
+// Toggles the `dark`/`light` class on <html> (document.documentElement) and
+// persists the choice. The initial class is set by the blocking pre-paint
+// script in layout.tsx, so the icon state is derived from the actual root
+// class to stay in sync on first render instead of assuming light.
 export function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof window === "undefined") return "dark";
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return stored === "light" ? "light" : "dark";
+    if (typeof window === "undefined") return "light";
+    return document.documentElement.classList.contains("dark") ? "dark" : "light";
   });
 
   useEffect(() => {
@@ -20,10 +20,10 @@ export function ThemeToggle() {
   }, [theme]);
 
   function apply(next: Theme) {
-    const root = document.getElementById("theme-root");
-    if (!root) return;
+    const root = document.documentElement;
     root.classList.toggle("dark", next === "dark");
     root.classList.toggle("light", next === "light");
+    root.style.colorScheme = next;
   }
 
   function toggle() {
@@ -40,7 +40,7 @@ export function ThemeToggle() {
       type="button"
       onClick={toggle}
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-      className="inline-flex items-center justify-center w-9 h-9 border border-border-strong text-text-secondary rounded-brand-sm hover:text-accent-app hover:border-accent-app transition-all duration-200"
+      className="inline-flex items-center justify-center w-10 h-10 border border-border-strong text-text-secondary rounded-brand-sm hover:text-accent-app hover:border-accent-app transition-colors duration-200"
     >
       {isDark ? (
         // Sun

@@ -26,8 +26,8 @@ const InfoIcon = () => (
 );
 
 // Shared shell for the three analysis sidebar cards (Bias Analysis, AI Summary,
-// Source Breakdown): surface background, subtle border, brand shadow, and a
-// header row with an H3 title and an info icon.
+// Source Breakdown): hairline border on paper — no surface fill, no shadow —
+// and a header row with a sentence-case title and a quiet info icon.
 export const SidebarCard: React.FC<SidebarCardProps> = ({
   title,
   children,
@@ -35,11 +35,11 @@ export const SidebarCard: React.FC<SidebarCardProps> = ({
 }) => {
   return (
     <section
-      className={`rounded-brand-md border border-border-subtle bg-surface-app shadow-brand-md p-6 ${className}`}
+      className={`rounded-brand-md border border-border-subtle p-6 ${className}`}
     >
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-h3 font-semibold text-text-primary">{title}</h3>
-        <span className="text-text-tertiary">
+        <h3 className="text-h4 font-semibold text-text-primary">{title}</h3>
+        <span className="text-text-quaternary">
           <InfoIcon />
         </span>
       </div>

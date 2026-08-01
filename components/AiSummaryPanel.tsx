@@ -28,7 +28,7 @@ export const AiSummaryPanel: React.FC<AiSummaryPanelProps> = ({
 
   return (
     <SidebarCard title="AI Summary" className={className}>
-      <p className="font-mono text-caption text-text-tertiary mb-4">
+      <p className="text-caption text-text-tertiary tabular-nums mb-4">
         Generated {dateLabel} · {summaryReadMinutes} min read
       </p>
 
@@ -36,7 +36,7 @@ export const AiSummaryPanel: React.FC<AiSummaryPanelProps> = ({
         {points.map((point, i) => (
           <li key={i} className="flex gap-3 text-body-small text-text-secondary leading-relaxed">
             <span
-              className="mt-2 w-1.5 h-1.5 flex-shrink-0 rounded-brand-full bg-accent-app"
+              className="mt-2 w-1.5 h-1.5 flex-shrink-0 bg-accent-app"
               aria-hidden="true"
             />
             <span>{point}</span>

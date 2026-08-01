@@ -26,13 +26,13 @@
   },
   {
     "event_name": "article_saved",
-    "event_description": "Fired when a signed-in user clicks the Save button on an article details page.",
-    "file": "app/news/[slug]/page.tsx"
+    "event_description": "Fired when a signed-in user saves (bookmarks) an article on the details page. Not fired on unsave.",
+    "file": "components/ArticleActions.tsx"
   },
   {
     "event_name": "article_shared",
-    "event_description": "Fired when a signed-in user clicks the Share button on an article details page.",
-    "file": "app/news/[slug]/page.tsx"
+    "event_description": "Fired when a user shares an article — via the native share sheet where available, else the clipboard-copy fallback.",
+    "file": "components/ArticleActions.tsx"
   },
   {
     "event_name": "related_article_clicked",

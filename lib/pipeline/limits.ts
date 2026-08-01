@@ -32,6 +32,13 @@ export const MIN_PARAGRAPH_CHARS = 40;
 /** Oxylabs realtime request timeout (ms). Rendered pages are slow (§decision 1). */
 export const OXYLABS_TIMEOUT_MS = 180_000;
 
+/**
+ * Direct-fetch provider timeout (ms) (SCRAPER_PROVIDER=direct). No proxy
+ * involved — a live page either arrives in seconds or is blocked, so 30s is
+ * generous; blocked sites throw and the engine isolates them per source.
+ */
+export const DIRECT_FETCH_TIMEOUT_MS = 30_000;
+
 // ─── Oxylabs Scheduler (§18) ─────────────────────────────────────────────────
 
 /**

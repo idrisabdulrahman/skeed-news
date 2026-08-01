@@ -3,7 +3,7 @@ import type { SourceRow } from "@/lib/supabase/types";
 import type { SchedulerProcessSummary } from "@/lib/pipeline/types";
 import { DEFAULT_PER_SOURCE } from "@/lib/pipeline/limits";
 import { runScrapePipeline } from "@/lib/pipeline/scrape";
-import { scrapeHtml } from "@/lib/scraping/oxylabs";
+import { scrapeHtml } from "@/lib/scraping/provider";
 import {
   getScheduleRuns,
   fetchJobResultHtml,
@@ -22,8 +22,8 @@ import { writeLog } from "@/lib/supabase/queries/logs";
 // stored homepage HTML, then feeds it into the SHARED scrape-to-insert engine
 // (runScrapePipeline) via the getHomepageHtml seam — so all validation, cleanup,
 // dedupe, URL-existence, and run logging is reused, never duplicated (§18).
-// Article DETAIL pages are still scraped live (Realtime scrapeHtml); only the
-// homepage HTML comes from scheduled results.
+// Article DETAIL pages are still scraped live (via the active scraper
+// provider); only the homepage HTML comes from scheduled results.
 
 const LOG_SCOPE = "scheduler";
 

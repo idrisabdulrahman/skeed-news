@@ -1,0 +1,12 @@
+[
+  {
+    "date": "2026-07-31",
+    "macrostructure": "Split Studio + Long Document",
+    "theme": "custom",
+    "enrichment": "none",
+    "scope": "app",
+    "brief": "skeem news — editorial redesign of home + news details (light paper default, cool-blue accent, single-family grotesque, sentence-case labels, dark mode kept first-class site-wide)",
+    "theme_axes": "light / same-family grotesque / cool blue",
+    "vibe": "editorial broadsheet — left copy, right product card"
+  }
+]

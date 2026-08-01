@@ -1,80 +1,92 @@
 # skeem
 
-**News articles analysis powered by AI.** skeem fetches articles from specified news sources, reads them with AI, and displays things that no other reader would know — the sentiment, the framing, the biased language, and how confident the machine really is about any of it.
+**News articles analysis powered by AI.** skeem fetches real articles from configured news sources, reads them with AI, and surfaces things no ordinary reader would see — the sentiment, the framing, the loaded language, and how confident the machine really is about any of it.
 
-It is not a news aggregator. Every story on the homepage was scraped, cleaned, validated, analyzed, embedded, and cross-linked with similar stories — automatically, at the rate of one pass per hour.
+It is not a news aggregator. Every story on the homepage was scraped, cleaned, validated, analyzed, embedded, and cross-linked with similar stories — automatically, once per hour.
 
-> *Real stories. Real fast. Stay informed. Stay ahead.*
+> *Real stories. Real fast. Stay informed. Stay balanced.*
 
 ---
 
 ## A look at it
 
-**Homepage** — a grid of story cards, each carrying its own left / center / right bias bar.
+**Homepage** — a newspaper-style masthead, a featured story, and a grid of story cards. Each card carries its own left / center / right bias bar. Light theme is the brand default; dark mode is one tap away.
 
-![skeem homepage](public/01-homepage.png)
+![skeem homepage — light](public/01-homepage.png)
 
-**Article details** — the full read alongside a bias breakdown, an AI summary, and a per-source split.
+![skeem homepage — dark](public/02-homepage-dark.png)
 
-![skeem news details page](public/02-news-details%20.png)
+**Article details** — the full read alongside a bias breakdown, an AI summary, framing notes, loaded terms, and a per-source split. (Signed-out visitors see an analysis gate.)
+
+![skeem news details page](public/03-news-details.png)
+
+**Design system** — the full token, type, and component reference, browsable live at `/design-system`.
+
+![skeem design system](public/04-design-system.png)
 
 ---
 
 ## What it does
 
-- **Scrapes real sources.** Scrapes article links from source homepages using the Oxylabs Web Scraper API, follows the links to the detail pages, and discards everything that is not a true article (category pages, live blogs, podcasts, shopping links, and more).
-- **Analyzes with AI.** Provides a neutral summary, a sentiment score and label, and an *estimated* political framing breakdown (left / center / right percentages) for each article — always as an estimate, never objective truth.
-- **Finds related stories.** Analyzed data is stored in pgvector, making it possible to find up to five semantically similar articles on the details page by cosine similarity.
-- **Runs itself.** Sources' homepages are scraped hourly by the Oxylabs Scheduler, which then triggers a Vercel Cron job 15 minutes later to process the results and analyze any new content — no need for babysitting after setting it up.
-- **Keeps receipts.** All pipeline runs log their activity — sources scanned, candidates for processing found and discarded, duplicates skipped, articles inserted, errors — to both console and a `logs` table.
+- **Scrapes real sources.** Reads article links from source homepages, follows them to the detail pages, and discards everything that isn't a true article — category pages, live blogs, podcasts, shopping links, author pages, and more (see the non-article reject list in `AGENTS.md`).
+- **Two scraper providers.** A free **direct** fetch (plain HTTP with browser headers — the default on this branch) and the paid **Oxylabs** Web Scraper API. Switch with one env var; no code changes.
+- **Analyzes with AI.** Produces a neutral summary, a sentiment score and label, and an *estimated* political framing breakdown (left / center / right percentages) for each article — always an estimate, never objective truth.
+- **Finds related stories.** Each analysis is embedded with `gemini-embedding-001` and stored in pgvector, powering a *Related stories* section that surfaces up to five semantically similar articles by cosine similarity.
+- **Runs itself.** Once wired up, an hourly schedule scrapes every active source homepage, inserts new articles, and analyzes whatever is pending — no babysitting required.
+- **Keeps receipts.** Every pipeline run logs its activity — sources scanned, candidates found and rejected, duplicates skipped, articles inserted, errors — to both the dev-server terminal and a `logs` table.
 
 ## The whole pipeline, end to end
 
 ```
-Oxylabs Scheduler        Vercel Cron (:15 past the hour)
-      │                            │
-   scrape homepages          GET /api/cron/pipeline
-      │                            │
-      ▼                            ▼
-  homepage HTML  ──►  extract links ──►  reject non-articles ──►  dedupe
-                                                                    │
-                          scrape detail pages  ◄─────────────────────
-                                   │
-                          validate + clean  ──►  insert into Supabase
-                                                        │
-                                              AI analysis + embedding
-                                                        │
-                                                 homepage + details UI
+ active sources (Supabase)
+            │
+            ▼
+   fetch homepage HTML  ──►  direct (free) or Oxylabs (paid)
+            │
+            ▼
+ extract candidate links  ──►  visible story cards only
+            │
+            ▼
+ reject non-articles  ──►  dedupe  ──►  skip URLs already in Supabase
+            │
+            ▼
+ scrape detail pages  ──►  validate + clean  ──►  insert (append-only)
+            │
+            ▼
+ AI analysis (summary · sentiment · framing · confidence)
+            │
+            ▼
+ text embedding  ──►  pgvector  ──►  homepage + details UI + related stories
 ```
 
-Manual and scheduled scraping share the same *pipeline* — the difference is only in fetching homepage HTML.
+Manual and scheduled scraping share the **same pipeline** — the only difference is how the homepage HTML is obtained (live fetch vs. a stored scheduler result).
 
 ## Tech stack
 
-| Layer          | Tool                                              |
-| -------------- | ------------------------------------------------- |
-| Framework      | Next.js (App Router) + React 19                    |
-| Auth           | Clerk                                              |
-| Database       | Supabase (Postgres + pgvector)                     |
-| Scraping       | Oxylabs Web Scraper API + Scheduler, Cheerio      |
-| AI             | Vercel AI SDK — Google Gemini (analysis + embeddings) |
-| Validation     | Zod                                               |
-| UI             | Tailwind CSS + shadcn/ui                           |
-| Scheduling     | Vercel Cron                                        |
-| Analytics      | PostHog                                            |
+| Layer          | Tool                                                        |
+| -------------- | ----------------------------------------------------------- |
+| Framework      | Next.js 16 (App Router) + React 19                          |
+| Language       | TypeScript (strict)                                         |
+| Auth           | Clerk                                                       |
+| Database       | Supabase (Postgres + pgvector)                              |
+| Scraping       | Direct fetch or Oxylabs Web Scraper API + Scheduler, Cheerio |
+| AI             | Vercel AI SDK — Google Gemini (`gemini-2.5-flash` analysis, `gemini-embedding-001` embeddings) |
+| Validation     | Zod                                                         |
+| Styling        | Tailwind CSS v4 + shadcn/ui                                 |
+| Scheduling     | Vercel Cron / GitHub Actions                                |
+| Analytics      | PostHog                                                     |
 
 ## Design language
 
-skeem has its own design system (browse it live at `/design-system`, or see the boards below in dark and light).
+skeem follows a custom **Hallmark** design system — editorial in tone, built on a single typeface family with a cool-blue accent over a light paper canvas, with a full dark counterpart. Browse it live at `/design-system`.
 
-![skeem design system — dark](public/UI%20design%20lang.png)
-![skeem design system — light](public/UI%20design_lang_light.png)
+- **Type.** [Geist](https://vercel.com/font) for everything — headlines, body, UI, and metadata. Sentence-case labels; tabular numerals for dates, percentages, and counts.
+- **Color (light).** A cool-blue accent (`oklch(51% 0.16 262)`) over a near-white paper canvas (`oklch(96.8% 0.007 262)`), with a semantic set — breaking red, info blue.
+- **Color (dark).** The same accent lifted to `oklch(72% 0.12 258)` over a dark canvas (`oklch(15% 0.014 265)`).
+- **The bias meter.** The signature component: a hairline **Left · Center · Right** bar — compact on every card, expanded on the details page. It's how framing becomes something you can read at a glance.
+- **System.** A 4px spacing base, a 1280px container, hairline rules, and minimal radii (2 / 4 / 8px) — cards and panels stay quiet and consistent everywhere. Tokens live in `tokens.css` and are mapped into Tailwind via `@theme inline` in `app/globals.css`.
 
-- **Brand.** A yellow lightning bolt beside a bold **SKEEM NEWS** wordmark — energetic but restrained.
-- **Type.** [Geist](https://vercel.com/font) for headlines and UI, [JetBrains Mono](https://www.jetbrains.com/lp/mono/) for data, labels, and metadata. On an 86px hero scale down to an 11px caption.
-- **Color.** An amber accent (`#E8B54B`) over a near-black canvas (`#0A0B0A`) and dark surfaces (`#14171A`), with a full semantic set — breaking red, success green, info blue, trending purple, warning amber. Ships in **both dark and light** themes.
-- **The bias meter.** The signature component: a horizontal **Left (red) · Center (neutral) · Right (blue)** bar that appears compact on every card and expanded on the details page. It's how framing becomes something you can read at a glance.
-- **System.** A 4px spacing base, a 1280px / 12-column grid, and defined shadow and radius scales — so cards, chips, and panels stay consistent everywhere.
+The full system is documented in `design.md`; the redesign log is in `.hallmark/log.json`.
 
 ## Getting started
 
@@ -86,17 +98,35 @@ pnpm install
 
 **2. Configure environment**
 
-Copy `.env.example` to `.env.local` and fill in your keys:
+This repo ships a minimal `.env.example`:
 
-```bash
-cp .env.example .env.local
+```ini
+# Scraper HTML source: "direct" (free plain fetch — this branch's default) or "oxylabs" (paid Web Scraper API)
+SCRAPER_PROVIDER=direct
 ```
 
-You'll need credentials for Clerk, Supabase, Oxylabs, and Google Generative AI, plus a `SKEEM_ADMIN_SECRET` of your own choosing. `CRON_SECRET` is injected by Vercel in production — don't add it locally.
+Copy it to `.env.local`, then add the rest of your credentials. The canonical variable list (kept in sync with `AGENTS.md`):
+
+| Variable | Purpose | Exposure |
+| --- | --- | --- |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk publishable key | client + server |
+| `CLERK_SECRET_KEY` | Clerk server-side key | server only |
+| `NEXT_PUBLIC_CLERK_SIGN_IN_URL` / `_SIGN_UP_URL` / `_*_FALLBACK_REDIRECT_URL` | Clerk auth route config | client + server |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | client + server |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase publishable key | client + server |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service-role DB access for writes and pipeline reads | server only |
+| `OXY_WSA_USERNAME` / `OXY_WSA_PASSWORD` | Oxylabs Web Scraper API + Scheduler auth (only if `SCRAPER_PROVIDER=oxylabs`) | server only |
+| `SCRAPER_PROVIDER` | Scraper HTML source: `direct` (free, branch default) or `oxylabs` (paid) | server only |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | AI analysis + embeddings via `@ai-sdk/google` | server only |
+| `SKEEM_ADMIN_SECRET` | Shared secret for the `x-skeem-admin-secret` header on action routes | server only |
+| `ANALYSIS_BATCH_SIZE` | Optional; articles analyzed per batch (default 5) | server only |
+| `CRON_SECRET` | Protects `GET /api/cron/pipeline`; injected by Vercel — **do not add to `.env.local`** | server only |
+
+Only `NEXT_PUBLIC_*` values may reach browser code; everything else is server-only.
 
 **3. Set up the database**
 
-Run `supabase/schema.sql` in the Supabase SQL Editor, then `supabase/seed.sql` to load the active news sources. Enable the **pgvector** extension under Database → Extensions before the embedding column is used.
+Run `supabase/schema.sql` in the Supabase SQL Editor to create the `sources`, `articles`, `article_analyses`, `logs`, `oxylabs_schedules`, and `oxylabs_schedule_runs` tables (plus indexes and the pgvector `embedding` column). Then run `supabase/seed.sql` to load the active news sources. Enable the **pgvector** extension under Database → Extensions if your project doesn't have it yet.
 
 **4. Run the dev server**
 
@@ -120,14 +150,16 @@ curl -X POST http://localhost:3000/api/analyze \
   -H "x-skeem-admin-secret: $SKEEM_ADMIN_SECRET"
 ```
 
-Once deployed, `POST /api/oxylabs/schedules` registers the hourly Oxylabs jobs and `vercel.json` wires up the cron trigger — after that the pipeline runs on its own.
+You can scope a scrape with a JSON body, e.g. `{"perSource": 3}`.
+
+Once deployed, the pipeline runs on its own: an hourly schedule fetches every active source homepage, inserts new articles, and analyzes whatever is pending. See `AGENTS.md` §18 for the full automatic-pipeline flow.
 
 ## API routes
 
 | Method | Route                                    | Purpose                                  |
 | ------ | ---------------------------------------- | ---------------------------------------- |
 | `POST` | `/api/scrape`                            | Manual scrape run                        |
-| `POST` | `/api/analyze`                           | Analyze pending articles                 |
+| `POST` | `/api/analyze`                           | Analyze pending articles (+ embed)       |
 | `POST` | `/api/oxylabs/schedules`                 | Create/sync hourly Oxylabs schedules     |
 | `GET`  | `/api/oxylabs/schedules`                 | List stored schedules                    |
 | `GET`  | `/api/oxylabs/runs`                      | List schedule runs                       |
@@ -141,14 +173,22 @@ Every action route (`POST`) requires the `x-skeem-admin-secret` header. The cron
 
 ```
 app/            Pages, auth UI, and thin API route handlers
-components/      UI — story cards, bias meters, analysis panels
+  page.tsx              homepage (newspaper masthead + story grid)
+  news/[slug]/          article details (Long Document layout)
+  design-system/        live design-system reference
+  api/                  scrape, analyze, cron, oxylabs, sources
+components/     UI — story cards, bias meters, analysis panels, theme toggle
 lib/
   ai/           Model calls, analysis schema, embeddings
+  http/         Admin-secret auth helper
   parsing/      Link extraction, URL normalization, article cleanup
   pipeline/     Scrape + analysis orchestration and typed results
-  scraping/     Oxylabs client and Scheduler integration
+  scraping/     direct.ts (free) · oxylabs.ts · provider.ts · scheduler.ts
   supabase/     Clients and typed queries
+  types/        Shared TypeScript types
 supabase/       schema.sql + seed.sql (source of truth)
+tokens.css      Design tokens (light + dark) consumed by Tailwind v4
+design.md       Hallmark design-system documentation
 ```
 
 The layers stay separate on purpose: the UI only ever *displays* stored data — it never scrapes, analyzes, or mutates pipeline state.
