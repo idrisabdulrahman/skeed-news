@@ -27,10 +27,14 @@ export function ArticleActions({
 }: ArticleActionsProps) {
   const [saved, setSaved] = useState(initialSaved);
   const [copied, setCopied] = useState(false);
+  // In-flight guard: disables the button so a double-click can't fire two
+  // concurrent toggles (save + unsave racing to the same row).
+  const [busy, setBusy] = useState(false);
   const copiedTimer = useRef<number | null>(null);
 
   const handleSave = async () => {
-    if (!isSignedIn) return; // signed-out click: the wrapping SignInButton opens the modal
+    if (!isSignedIn || busy) return; // signed-out click: the wrapping SignInButton opens the modal
+    setBusy(true);
     try {
       const res = await fetch("/api/saved", {
         method: "POST",
@@ -49,6 +53,8 @@ export function ArticleActions({
       }
     } catch (err) {
       console.error("[ArticleActions] save toggle failed:", err);
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -97,8 +103,9 @@ export function ArticleActions({
 
   const saveButton = (
     <button
-      className="inline-flex items-center gap-1.5 text-caption font-mono hover:text-text-primary transition-colors duration-200"
+      className="inline-flex items-center gap-1.5 text-caption font-mono hover:text-text-primary transition-colors duration-200 disabled:cursor-wait"
       onClick={handleSave}
+      disabled={busy}
       aria-pressed={saved}
     >
       <svg

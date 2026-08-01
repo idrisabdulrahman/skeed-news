@@ -16,6 +16,7 @@ export interface ParsedArticle {
   imageUrl: string; // required by the content gate (§13)
   publishedAt: string; // ISO string, required by the content gate (§13)
   canonicalUrl: string | null;
+  category: string | null; // section extracted from meta/JSON-LD (categories feature)
   paragraphs: string[];
   rawText: string;
 }
@@ -102,6 +103,10 @@ export function parseAndValidateArticle(
   const imageUrl = extractImageUrl($, url);
   const publishedAt = extractPublishedAt($);
   const canonicalUrl = extractCanonical($, url);
+  // Category must be read BEFORE the noise scrub — breadcrumbs and section
+  // chrome are removed by NOISE_SELECTORS below, and this comes from
+  // meta/JSON-LD, so keep the ordering explicit.
+  const category = extractCategory($);
 
   // Scrub noise, then read body from the best article container.
   $(NOISE_SELECTORS).remove();
@@ -140,6 +145,7 @@ export function parseAndValidateArticle(
       imageUrl,
       publishedAt,
       canonicalUrl,
+      category,
       paragraphs: meaningful.length > 0 ? meaningful : paragraphs,
       rawText,
     },
@@ -228,6 +234,36 @@ function extractCanonical($: CheerioAPI, base: string): string | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Extract the section/category for the categories feature. Chain (prompt
+ * decision): `article:section` meta → `og:section` meta → JSON-LD
+ * `articleSection`. Null when none is present — category is optional.
+ */
+function extractCategory($: CheerioAPI): string | null {
+  const candidates: (string | undefined)[] = [
+    $("meta[property='article:section']").attr("content"),
+    $("meta[name='article:section']").attr("content"),
+    $("meta[property='og:section']").attr("content"),
+  ];
+
+  $("script[type='application/ld+json']").each((_, el) => {
+    const raw = $(el).text();
+    // A @graph block can carry many articleSection values; take the first.
+    const re = /"articleSection"\s*:\s*"([^"]+)"/;
+    const m = raw.match(re);
+    if (m) candidates.push(m[1]);
+  });
+
+  for (const c of candidates) {
+    const label = clean(c);
+    // Reject meta noise: bare booleans, empty, or over-long section strings.
+    if (!label || label.length > 60) continue;
+    if (label.length < 2) continue;
+    return label;
+  }
+  return null;
 }
 
 /**

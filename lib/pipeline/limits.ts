@@ -83,11 +83,16 @@ export const ANALYSIS_MODEL = "google/gemini-2.5-flash";
 export const EMBEDDING_MODEL = "text-embedding-3-small";
 
 /**
- * Cap on analysis output tokens. The structured analysis is small JSON, so this
- * is generous — and it keeps the request under the OpenRouter free-tier ceiling
- * (which rejects the model's default 65535 max_tokens on unpaid accounts).
+ * Cap on analysis output tokens. The structured analysis is small JSON
+ * (~400–800 tokens: summary, framing notes, loaded terms, disclaimer), so this
+ * ceiling stays generous while remaining affordable: OpenRouter bills against
+ * the REQUESTED max_tokens ceiling, and a 402 with "can only afford N tokens"
+ * fails the whole call even though actual usage is far smaller. The 65535
+ * default always 402s on unpaid accounts; 8000 402s once the free balance dips
+ * below it, which silently broke every analysis call (§19). 2048 covers real
+ * output with headroom and passes the affordability check on a drained balance.
  */
-export const MAX_ANALYSIS_OUTPUT_TOKENS = 8_000;
+export const MAX_ANALYSIS_OUTPUT_TOKENS = 2_048;
 
 /** Embedding size — must match the `vector(1536)` column on article_analyses (§20). */
 export const EMBEDDING_DIMENSIONS = 1536;

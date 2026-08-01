@@ -1,4 +1,5 @@
 import React from "react";
+import { BiasTrack } from "@/components/BiasTrack";
 
 export interface CompactBiasBarProps {
   left: number;
@@ -24,31 +25,11 @@ export const CompactBiasBar: React.FC<CompactBiasBarProps> = ({
 
   return (
     <div className={`w-full select-none ${className}`}>
-      <div className="flex w-full h-1.5 overflow-hidden bg-border-subtle">
-        {leftPercent > 0 && (
-          <div
-            style={{ width: `${leftPercent}%` }}
-            className="h-full bg-breaking"
-          />
-        )}
-        {centerPercent > 0 && (
-          <div
-            style={{ width: `${centerPercent}%` }}
-            className="h-full"
-          />
-        )}
-        {rightPercent > 0 && (
-          <div
-            style={{ width: `${rightPercent}%` }}
-            className="h-full bg-info"
-          />
-        )}
-      </div>
-      <div className="mt-2 flex items-center justify-between text-caption text-text-tertiary tabular-nums">
-        <span>Left {leftPercent}%</span>
-        <span>Center {centerPercent}%</span>
-        <span>Right {rightPercent}%</span>
-      </div>
+      <BiasTrack
+        leftPercent={leftPercent}
+        centerPercent={centerPercent}
+        rightPercent={rightPercent}
+      />
     </div>
   );
 };

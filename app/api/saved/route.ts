@@ -11,6 +11,15 @@ import {
 // a signed-in userId, and every write is scoped by the server-side userId —
 // a userId from the request body is never trusted.
 
+// articleId must be a Postgres uuid (gen_random_uuid() form). Anything else is
+// rejected up front — a malformed id would otherwise surface as a PostgREST
+// "invalid input syntax for type uuid" 500 instead of a clean 400.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isUuid(value: unknown): value is string {
+  return typeof value === "string" && UUID_RE.test(value);
+}
+
 export const dynamic = "force-dynamic";
 
 // GET /api/saved → { articleIds } for the signed-in user (hydrates the filled
@@ -39,7 +48,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  if (typeof articleId !== "string" || articleId.length === 0) {
+  if (!isUuid(articleId)) {
     return NextResponse.json(
       { error: "articleId is required." },
       { status: 400 },
@@ -65,7 +74,7 @@ export async function DELETE(req: Request): Promise<NextResponse> {
   }
 
   const articleId = new URL(req.url).searchParams.get("articleId");
-  if (!articleId) {
+  if (!isUuid(articleId)) {
     return NextResponse.json(
       { error: "articleId is required." },
       { status: 400 },

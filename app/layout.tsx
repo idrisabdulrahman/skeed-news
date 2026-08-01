@@ -3,6 +3,7 @@ import Script from "next/script";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Geist, JetBrains_Mono } from "next/font/google";
 import { PostHogUserIdentifier } from "@/components/PostHogUserIdentifier";
+import { STORAGE_KEY } from "@/components/ThemeToggle";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -24,10 +25,11 @@ export const metadata: Metadata = {
 // paint so the saved (or OS) theme is applied to <html> immediately — no
 // light-then-dark flash on fresh load. Reads localStorage only; sets one class.
 // Brand default is light: no saved value + no OS-dark preference → light.
+// The storage key is imported from ThemeToggle so the two can never drift.
 const themeInitScript = `
 (function () {
   try {
-    var key = 'skeem-theme';
+    var key = '${STORAGE_KEY}';
     var stored = localStorage.getItem(key);
     var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     var theme = stored === 'light' || stored === 'dark'

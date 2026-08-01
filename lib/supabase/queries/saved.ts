@@ -130,7 +130,8 @@ export async function getSavedArticles(userId: string): Promise<ArticleCard[]> {
     .from("saved_articles")
     .select(SELECT_SAVED_WITH_JOINS)
     .eq("user_id", userId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(200); // bound the rendered page; bookmarks beyond this are unreachable anyway
 
   if (error) {
     console.error("[queries/saved] getSavedArticles failed:", error.message);

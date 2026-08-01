@@ -268,6 +268,7 @@ async function scrapeSource(
       image_url: article.imageUrl,
       published_at: article.publishedAt,
       raw_text: article.rawText,
+      category: article.category, // section extracted at scrape time (categories feature)
     });
 
     if (outcome === "inserted") {

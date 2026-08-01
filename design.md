@@ -32,10 +32,11 @@ only in how they assemble those tokens.
 - Semantic data-viz colors (`--breaking` red, `--info` blue, `--success`,
   `--trending`, `--warning`) are distinct from the brand accent — framing bars
   read as data, not brand.
-- Theme flip: `.light` / `.dark` classes on `#theme-root` (both pages);
-  persisted via `skeem-theme` (localStorage). `prefers-color-scheme: dark`
-  applies dark unless `.light` is present. **Light is the default; dark is
-  first-class and available on every page.**
+- Theme flip: the `light` / `dark` class lives on `<html>`, set pre-paint by the
+  blocking script in `app/layout.tsx` and toggled by ThemeToggle; persisted via
+  `skeem-theme` (localStorage). A stored value wins; with no stored value,
+  `prefers-color-scheme: dark` applies dark, otherwise light. **Light is the
+  default; dark is first-class and available on every page.**
 
 ## Typography
 

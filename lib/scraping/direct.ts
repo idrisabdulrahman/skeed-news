@@ -22,6 +22,18 @@ const BROWSER_HEADERS = {
  * isolate the error per source. `fetch` follows redirects by default.
  */
 export async function fetchHtml(url: string): Promise<string> {
+  // Only http(s) targets are ever fetched. Guards against a malformed/odd
+  // scheme candidate URL reaching the network layer with a clean error.
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error(`Invalid URL for direct fetch: ${url}`);
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error(`Refusing non-http(s) URL for direct fetch: ${url}`);
+  }
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), DIRECT_FETCH_TIMEOUT_MS);
 

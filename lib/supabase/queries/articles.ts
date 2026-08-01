@@ -11,8 +11,9 @@ import type {
   BiasLabel,
 } from "@/lib/supabase/types";
 import type { ArticleCard, ArticleDetail } from "@/lib/types/article";
-import { URL_IN_CHUNK } from "@/lib/pipeline/limits";
+import { URL_IN_CHUNK, EMBEDDING_DIMENSIONS } from "@/lib/pipeline/limits";
 import { normalizeTitle } from "@/lib/parsing/url";
+import { categoryKey } from "@/lib/categories";
 
 // Read layer for the pages. Returns the exact ArticleCard / ArticleDetail shapes
 // the UI already consumes so the pages are a drop-in swap from the old mock.
@@ -47,14 +48,23 @@ function firstAnalysis(
 // "[0.0147,-0.0427,…]") despite the number[] type in lib/supabase/types.ts —
 // passing that raw string on caused a double-encode in getRelatedArticles and
 // silently hid the Related Stories section (§20). Normalise both runtime forms
-// here, once, at the query seam. [] when missing or unparseable, which keeps
-// callers (and the section) safe.
+// here, once, at the query seam. [] when missing, unparseable, or the wrong
+// shape — a vector must be exactly EMBEDDING_DIMENSIONS finite numbers, or it
+// is not usable (a truncated/wrong-dim embedding would break match_articles
+// and the pending-backfill detection). Callers (and the section) stay safe.
 function parseEmbedding(value: string | number[] | null): number[] {
-  if (Array.isArray(value)) return value;
+  if (Array.isArray(value)) {
+    return value.length === EMBEDDING_DIMENSIONS &&
+      value.every((n) => typeof n === "number" && Number.isFinite(n))
+      ? value
+      : [];
+  }
   if (!value) return [];
   try {
     const parsed: unknown = JSON.parse(value);
-    return Array.isArray(parsed) && parsed.every((n) => typeof n === "number")
+    return Array.isArray(parsed) &&
+      parsed.length === EMBEDDING_DIMENSIONS &&
+      parsed.every((n) => typeof n === "number" && Number.isFinite(n))
       ? (parsed as number[])
       : [];
   } catch {
@@ -229,6 +239,68 @@ export async function getArticleBySlug(
     embedding.length > 0 ? await getRelatedArticles(row.id, embedding) : [];
 
   return toArticleDetail(row, analysis, related);
+}
+
+// ─── categories (§9 categories feature) ───────────────────────────────────────
+
+// Categories are the distinct, non-null `category` values on ANALYZED articles,
+// sorted by how many articles they hold (largest first, cap 12 — prompt
+// decision 3). Categories only appear after the backfill SQL runs, so an empty
+// list is a valid state — the masthead then simply omits the chip row.
+export async function getCategories(): Promise<string[]> {
+  const supabase = getSupabaseReadClient();
+  const { data, error } = await supabase
+    .from("articles")
+    .select("category")
+    .not("category", "is", null);
+
+  if (error) {
+    console.error("[queries/articles] getCategories failed:", error.message);
+    return [];
+  }
+
+  const counts = new Map<string, number>();
+  for (const row of data ?? []) {
+    const label = (row as { category: string }).category.trim();
+    if (label) counts.set(label, (counts.get(label) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 12)
+    .map(([label]) => label);
+}
+
+// Analyzed articles in one category, newest first. The slug match is done in JS
+// (§21 joined-filter idiom): category labels like "Business & Markets" contain
+// characters that break ILIKE-from-slug patterns, and the dataset is small.
+export async function getArticlesByCategory(
+  slug: string,
+): Promise<ArticleCard[]> {
+  const supabase = getSupabaseReadClient();
+  const { data, error } = await supabase
+    .from("articles")
+    .select(SELECT_WITH_JOINS)
+    .not("category", "is", null)
+    .order("published_at", { ascending: false })
+    .limit(100);
+
+  if (error) {
+    console.error(
+      "[queries/articles] getArticlesByCategory failed:",
+      error.message,
+    );
+    return [];
+  }
+
+  const rows = (data ?? []) as unknown as JoinedArticleRow[];
+  const cards: ArticleCard[] = [];
+  for (const row of rows) {
+    if (categoryKey(row.category ?? "") !== slug) continue;
+    const analysis = firstAnalysis(row.article_analyses);
+    if (!analysis) continue; // analyzed-only filter, applied in JS (§21)
+    cards.push(toArticleCard(row, analysis));
+  }
+  return cards;
 }
 
 // ─── write layer (scrape pipeline) ───────────────────────────────────────────
