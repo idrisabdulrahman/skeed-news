@@ -50,6 +50,7 @@ create table if not exists public.articles (
   image_url      text not null,                 -- required before save (§7)
   published_at   timestamptz not null,          -- required before save (§7)
   raw_text       text,
+  category       text,                             -- section extracted at scrape time (categories feature)
   scraped_at     timestamptz not null default now(),
   analyzed_at    timestamptz                     -- null until analysis is saved
 );
@@ -57,6 +58,7 @@ create table if not exists public.articles (
 create index if not exists articles_published_at_idx on public.articles (published_at desc);
 create index if not exists articles_source_id_idx     on public.articles (source_id);
 create index if not exists articles_analyzed_at_idx    on public.articles (analyzed_at);
+create index if not exists articles_category_idx       on public.articles (category);
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- article_analyses
@@ -170,7 +172,8 @@ create table if not exists public.saved_articles (
   unique (user_id, article_id)
 );
 
-create index if not exists saved_articles_user_id_idx on public.saved_articles (user_id);
+create index if not exists saved_articles_user_id_idx    on public.saved_articles (user_id);
+create index if not exists saved_articles_article_id_idx on public.saved_articles (article_id);
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Row Level Security

@@ -43,6 +43,7 @@ export type ArticleRow = {
   image_url: string;
   published_at: string;
   raw_text: string | null;
+  category: string | null;
   scraped_at: string;
   analyzed_at: string | null;
 }
@@ -56,6 +57,7 @@ export type ArticleInsert = {
   image_url: string;
   published_at: string;
   raw_text?: string | null;
+  category?: string | null;
   scraped_at?: string;
   analyzed_at?: string | null;
 }

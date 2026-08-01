@@ -653,7 +653,7 @@ Canonical list lives in `.env.example`. Only `NEXT_PUBLIC_*` values may reach br
 | `SUPABASE_SERVICE_ROLE_KEY`                                                   | Service-role DB access for writes and pipeline reads                                    | server only     |
 | `OXY_WSA_USERNAME` / `OXY_WSA_PASSWORD`                                       | Oxylabs Web Scraper API + Scheduler auth                                                | server only     |
 | `SCRAPER_PROVIDER`                                                           | Scraper HTML source: `direct` (free plain fetch — branch default) or `oxylabs` (paid Web Scraper API) | server only     |
-| `GOOGLE_GENERATIVE_AI_API_KEY`                                                    | AI analysis (`gemini-2.5-flash`) + embeddings (`gemini-embedding-001` @ 1536 dims) via `@ai-sdk/google` | server only     |
+| `OPENROUTER_API_KEY`                                                         | AI analysis (`google/gemini-2.5-flash`) + embeddings (`text-embedding-3-small` @ 1536 dims) via `@openrouter/ai-sdk-provider` | server only     |
 | `SKEEM_ADMIN_SECRET`                                                         | Shared secret for `x-skeem-admin-secret` on action routes (section 15)                 | server only     |
 | `ANALYSIS_BATCH_SIZE`                                                         | Optional; articles analyzed per batch (default 5)                                       | server only     |
 | `CRON_SECRET`                                                                 | Protects `GET /api/cron/pipeline`; injected by Vercel, not in `.env.local` (section 18) | server only     |
