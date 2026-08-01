@@ -31,7 +31,7 @@ It is not a news aggregator. Every story on the homepage was scraped, cleaned, v
 - **Scrapes real sources.** Reads article links from source homepages, follows them to the detail pages, and discards everything that isn't a true article — category pages, live blogs, podcasts, shopping links, author pages, and more (see the non-article reject list in `AGENTS.md`).
 - **Two scraper providers.** A free **direct** fetch (plain HTTP with browser headers — the default on this branch) and the paid **Oxylabs** Web Scraper API. Switch with one env var; no code changes.
 - **Analyzes with AI.** Produces a neutral summary, a sentiment score and label, and an *estimated* political framing breakdown (left / center / right percentages) for each article — always an estimate, never objective truth.
-- **Finds related stories.** Each analysis is embedded with `gemini-embedding-001` and stored in pgvector, powering a *Related stories* section that surfaces up to five semantically similar articles by cosine similarity.
+- **Finds related stories.** Each analysis is embedded with `text-embedding-3-small` and stored in pgvector, powering a *Related stories* section that surfaces up to five semantically similar articles by cosine similarity.
 - **Runs itself.** Once wired up, an hourly schedule scrapes every active source homepage, inserts new articles, and analyzes whatever is pending — no babysitting required.
 - **Keeps receipts.** Every pipeline run logs its activity — sources scanned, candidates found and rejected, duplicates skipped, articles inserted, errors — to both the dev-server terminal and a `logs` table.
 
@@ -70,7 +70,7 @@ Manual and scheduled scraping share the **same pipeline** — the only differenc
 | Auth           | Clerk                                                       |
 | Database       | Supabase (Postgres + pgvector)                              |
 | Scraping       | Direct fetch or Oxylabs Web Scraper API + Scheduler, Cheerio |
-| AI             | Vercel AI SDK — Google Gemini (`gemini-2.5-flash` analysis, `gemini-embedding-001` embeddings) |
+| AI             | Vercel AI SDK via OpenRouter (`google/gemini-2.5-flash` analysis, `text-embedding-3-small` embeddings) |
 | Validation     | Zod                                                         |
 | Styling        | Tailwind CSS v4 + shadcn/ui                                 |
 | Scheduling     | Vercel Cron / GitHub Actions                                |
@@ -117,7 +117,7 @@ Copy it to `.env.local`, then add the rest of your credentials. The canonical va
 | `SUPABASE_SERVICE_ROLE_KEY` | Service-role DB access for writes and pipeline reads | server only |
 | `OXY_WSA_USERNAME` / `OXY_WSA_PASSWORD` | Oxylabs Web Scraper API + Scheduler auth (only if `SCRAPER_PROVIDER=oxylabs`) | server only |
 | `SCRAPER_PROVIDER` | Scraper HTML source: `direct` (free, branch default) or `oxylabs` (paid) | server only |
-| `GOOGLE_GENERATIVE_AI_API_KEY` | AI analysis + embeddings via `@ai-sdk/google` | server only |
+| `OPENROUTER_API_KEY` | AI analysis (`google/gemini-2.5-flash`) + embeddings (`text-embedding-3-small`) via OpenRouter | server only |
 | `SKEEM_ADMIN_SECRET` | Shared secret for the `x-skeem-admin-secret` header on action routes | server only |
 | `ANALYSIS_BATCH_SIZE` | Optional; articles analyzed per batch (default 5) | server only |
 | `CRON_SECRET` | Protects `GET /api/cron/pipeline`; injected by Vercel — **do not add to `.env.local`** | server only |
