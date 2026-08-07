@@ -186,13 +186,17 @@ function bucketFor(
 
 // ─── queries ──────────────────────────────────────────────────────────────
 
-// Analyzed articles, newest first, mapped to home-page cards.
+// Analyzed articles, most recently analyzed first, mapped to home-page cards.
+// Ordering by analyzed_at (nulls last) keeps newly scraped-but-unanalyzed rows
+// out of the returned set — fetching by published_at alone can surface rows that
+// all lack an analysis and yield an empty feed even when analyzed stories exist
+// (the joined-analysis filter runs in JS per §21).
 export async function getTopArticles(limit = 30): Promise<ArticleCard[]> {
   const supabase = getSupabaseReadClient();
   const { data, error } = await supabase
     .from("articles")
     .select(SELECT_WITH_JOINS)
-    .order("published_at", { ascending: false })
+    .order("analyzed_at", { ascending: false, nullsFirst: false })
     .limit(limit);
 
   if (error) {

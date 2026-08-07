@@ -43,3 +43,13 @@ yarn-error.log*
 next-env.d.ts
 .env.local
 skills-lock.json
+
+# temp scripts
+run-*.mjs
+check-*.mjs
+test-*.mjs
+smoke*.mjs
+debug-*.mjs
+target-*.mjs
+check-db.mjs
+.zcode/

@@ -22,6 +22,8 @@ export interface MastheadProps {
   activeCategorySlug?: string;
   /** Show the auth controls in the right cluster. Details page hides them. */
   showAuth?: boolean;
+  /** Show the theme toggle. Landing pages lock one theme, so they hide it. */
+  showThemeToggle?: boolean;
 }
 
 // N6 masthead shared by home, category, news details, and saved pages:
@@ -31,6 +33,7 @@ export interface MastheadProps {
 export async function Masthead({
   activeCategorySlug,
   showAuth = true,
+  showThemeToggle = true,
 }: MastheadProps) {
   const categories = await getCategories();
 
@@ -50,7 +53,7 @@ export async function Masthead({
           </Link>
 
           <div className="flex items-center gap-2.5 justify-self-end">
-            <ThemeToggle />
+            {showThemeToggle && <ThemeToggle />}
             {showAuth && <AuthControls />}
           </div>
         </div>

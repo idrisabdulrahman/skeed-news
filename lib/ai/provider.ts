@@ -1,9 +1,17 @@
 import "server-only";
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createGroq } from "@ai-sdk/groq";
 
-// Single OpenRouter provider for all AI calls (AGENTS.md §19/§20/§21). The API
-// key is read here and nowhere else, so the server-only boundary has one owner.
-// OPENROUTER_API_KEY is server-only (§21) — never NEXT_PUBLIC_.
-export const openrouter = createOpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY,
+// Google Gemini - primary for analysis (gemini-2.0-flash, ~1000+ RPD free
+// via AI Studio key) and embeddings (gemini-embedding-001, 1000 RPD free).
+// GOOGLE_GENERATIVE_AI_API_KEY is server-only (AGENTS.md §21).
+export const google = createGoogleGenerativeAI({
+  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+});
+
+// Groq - fallback for analysis when Google daily quota is exhausted.
+// Llama 3.3 70B, 14,400 RPD free, 30 RPM. Structured output via OpenAI-
+// compatible API. GROQ_API_KEY is server-only (AGENTS.md §21).
+export const groq = createGroq({
+  apiKey: process.env.GROQ_API_KEY,
 });

@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import { Masthead } from "@/components/Masthead";
+import { Footer } from "@/components/Footer";
 import { AnalysisGate } from "@/components/AnalysisGate";
 import { BiasMeter } from "@/components/BiasMeter";
 import { BiasAnalysisPanel } from "@/components/BiasAnalysisPanel";
@@ -31,10 +32,10 @@ export async function generateMetadata({
   const { slug } = await params;
   const article = await getArticleBySlug(slug);
   if (!article) {
-    return { title: "Article not found — Skeem News" };
+    return { title: "Article not found - Skeem News" };
   }
   return {
-    title: `${article.title} — Skeem News`,
+    title: `${article.title} - Skeem News`,
     description: article.summaryPoints[0],
   };
 }
@@ -52,7 +53,7 @@ export default async function NewsDetailsPage({
   }
 
   // Gate the full analysis: signed-out visitors get an in-page sign-in gate instead of
-  // the analysis body (AGENTS.md §21 — auth enforced server-side, not just hidden in UI).
+  // the analysis body (AGENTS.md §21 - auth enforced server-side, not just hidden in UI).
   const { userId } = await auth();
   const isSignedIn = Boolean(userId);
 
@@ -71,7 +72,7 @@ export default async function NewsDetailsPage({
     // Theme class is set on <html> by the blocking pre-paint script in
     // layout.tsx (no light-then-dark flash). #theme-root carries layout only.
     <div id="theme-root" className="flex-1 bg-bg-app text-text-primary flex flex-col font-sans">
-      {/* N6 masthead — same as home, without auth controls */}
+      {/* N6 masthead - same as home, without auth controls */}
       <Masthead showAuth={false} />
 
       {/* Article + sidebar (gated) */}
@@ -88,7 +89,7 @@ export default async function NewsDetailsPage({
           sentimentLabel={article.sentimentLabel}
         />
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-8 lg:gap-12">
-          {/* Main column — Long Document measure (65ch) */}
+          {/* Main column - Long Document measure (65ch) */}
           <article className="min-w-0 max-w-[65ch]">
             {/* Back to home */}
             <Link
@@ -130,7 +131,7 @@ export default async function NewsDetailsPage({
               />
             </div>
 
-            {/* Hero image — sharp hairline frame */}
+            {/* Hero image - sharp hairline frame */}
             <figure className="mb-6">
               <div className="relative w-full aspect-[16/9] overflow-hidden border border-border-subtle">
                 <Image
@@ -149,7 +150,7 @@ export default async function NewsDetailsPage({
               )}
             </figure>
 
-            {/* Bias Distribution block — quiet hairline panel */}
+            {/* Bias Distribution block - quiet hairline panel */}
             <div className="border border-border-subtle p-5 mb-8">
               <h2 className="text-h4 font-semibold text-text-primary mb-3">
                 Bias distribution
@@ -173,7 +174,7 @@ export default async function NewsDetailsPage({
               ))}
             </div>
 
-            {/* Related Stories — only when the article has an embedding and
+            {/* Related Stories - only when the article has an embedding and
                 cosine-nearest matches exist (§20). Hidden otherwise. */}
             {article.relatedArticles.length > 0 && (
               <div className="mt-12 pt-8 border-t border-border-subtle">
@@ -218,8 +219,8 @@ export default async function NewsDetailsPage({
       </main>
       )}
 
-      {/* Footer */}
-      {/* <Footer /> */}
+      {/* Ft4 colophon */}
+      <Footer />
     </div>
   );
 }

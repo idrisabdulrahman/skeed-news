@@ -67,40 +67,40 @@ export default function DesignSystemPage() {
     }
   };
 
-  // Color Tokens Data based on current mode
+// Color Tokens Data based on current mode
   const isDark = theme === "dark";
   const colors = {
     primary: [
-      { name: "ACCENT", hex: isDark ? "#E8B54B" : "#EBB54B", bg: isDark ? "bg-[#E8B54B]" : "bg-[#EBB54B]", text: "text-[#0A0B0A]" },
-      { name: "TEXT PRIMARY", hex: isDark ? "#E6E8E6" : "#14171A", bg: isDark ? "bg-[#E6E8E6]" : "bg-[#14171A]", text: isDark ? "text-[#0A0B0A]" : "text-white" },
-      { name: "SURFACE", hex: isDark ? "#14171A" : "#F6F7F8", bg: isDark ? "bg-[#14171A]" : "bg-[#F6F7F8]", text: isDark ? "text-white" : "text-[#14171A]" },
-      { name: "BACKGROUND", hex: isDark ? "#0A0B0A" : "#FFFFFF", bg: isDark ? "bg-[#0A0B0A]" : "bg-[#FFFFFF]", text: isDark ? "text-white" : "text-[#14171A]", border: "border border-border-strong" },
+      { name: "ACCENT", hex: isDark ? "#74A6EF" : "#2F60C0", bg: isDark ? "bg-[#74A6EF]" : "bg-[#2F60C0]", text: isDark ? "text-[#080B11]" : "text-[#FBFCFD]" },
+      { name: "TEXT PRIMARY", hex: isDark ? "#E2E5EA" : "#1B1F27", bg: isDark ? "bg-[#E2E5EA]" : "bg-[#1B1F27]", text: isDark ? "text-[#080B11]" : "text-[#FBFCFD]" },
+      { name: "SURFACE", hex: isDark ? "#11141A" : "#F2F5F9", bg: isDark ? "bg-[#11141A]" : "bg-[#F2F5F9]", text: isDark ? "text-[#E2E5EA]" : "text-[#1B1F27]" },
+      { name: "BACKGROUND", hex: isDark ? "#080B11" : "#FFFFFF", bg: isDark ? "bg-[#080B11]" : "bg-[#FFFFFF]", text: isDark ? "text-[#E2E5EA]" : "text-[#1B1F27]", border: "border border-border-strong" },
     ],
     semantic: [
-      { name: "BREAKING", hex: "#E53935", bg: "bg-[#E53935]", text: "text-white" },
-      { name: "SUCCESS", hex: "#22C55E", bg: "bg-[#22C55E]", text: "text-white" },
-      { name: "INFO", hex: "#3B82F6", bg: "bg-[#3B82F6]", text: "text-white" },
-      { name: "TRENDING", hex: "#A855F7", bg: "bg-[#A855F7]", text: "text-white" },
-      { name: "WARNING", hex: "#F59E0B", bg: "bg-[#F59E0B]", text: "text-white" },
+      { name: "BREAKING", hex: "#D01C25", bg: "bg-[#D01C25]", text: "text-white" },
+      { name: "SUCCESS", hex: "#00A446", bg: "bg-[#00A446]", text: "text-white" },
+      { name: "INFO", hex: "#2A76E2", bg: "bg-[#2A76E2]", text: "text-white" },
+      { name: "TRENDING", hex: "#935EDF", bg: "bg-[#935EDF]", text: "text-white" },
+      { name: "WARNING", hex: "#D78D00", bg: "bg-[#D78D00]", text: "text-white" },
     ],
     neutrals: [
-      { name: "TEXT SECONDARY", hex: isDark ? "#A0A6A3" : "#434846", bg: isDark ? "bg-[#A0A6A3]" : "bg-[#434846]", text: isDark ? "text-black" : "text-white" },
-      { name: "TEXT TERTIARY", hex: isDark ? "#6A7270" : "#6A7270", bg: "bg-[#6A7270]", text: "text-white" },
-      { name: "TEXT QUATERNARY", hex: isDark ? "#434846" : "#A0A6A3", bg: isDark ? "bg-[#434846]" : "bg-[#A0A6A3]", text: isDark ? "text-white" : "text-black" },
-      { name: "BORDER STRONG", hex: isDark ? "#262C31" : "#E6E8E6", bg: isDark ? "bg-[#262C31]" : "bg-[#E6E8E6]", text: isDark ? "text-white" : "text-black" },
-      { name: "BORDER SUBTLE", hex: isDark ? "rgba(255,255,255,0.06)" : "#ECEFF1", bg: isDark ? "bg-white/10" : "bg-[#ECEFF1]", text: isDark ? "text-white" : "text-black" },
+      { name: "TEXT SECONDARY", hex: isDark ? "#AFB1B5" : "#44484E", bg: isDark ? "bg-[#AFB1B5]" : "bg-[#44484E]", text: isDark ? "text-[#080B11]" : "text-[#FFFFFF]" },
+      { name: "TEXT TERTIARY", hex: isDark ? "#84868A" : "#66696E", bg: isDark ? "bg-[#84868A]" : "bg-[#66696E]", text: "text-white" },
+      { name: "TEXT QUATERNARY", hex: isDark ? "#626366" : "#8A8C90", bg: isDark ? "bg-[#626366]" : "bg-[#8A8C90]", text: isDark ? "text-white" : "text-[#1B1F27]" },
+      { name: "BORDER STRONG", hex: isDark ? "#2B2E34" : "#D2D4D8", bg: isDark ? "bg-[#2B2E34]" : "bg-[#D2D4D8]", text: isDark ? "text-white" : "text-[#1B1F27]" },
+      { name: "BORDER SUBTLE", hex: isDark ? "#1F2227" : "#E4E6EA", bg: isDark ? "bg-[#1F2227]" : "bg-[#E4E6EA]", text: isDark ? "text-white" : "text-[#1B1F27]" },
     ],
   };
 
   return (
-    <div className="min-h-screen bg-bg-app text-text-primary py-12 px-6 lg:px-8 font-sans transition-colors duration-200 selection:bg-accent-app selection:text-[#0A0B0A]">
+    <div className="min-h-[100dvh] bg-bg-app text-text-primary py-12 px-6 lg:px-8 font-sans transition-colors duration-200 selection:bg-accent-app selection:text-[#FBFCFD]">
       {/* Floating Theme Controller */}
       <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 p-2 bg-surface-app border border-border-strong rounded-brand-full shadow-brand-lg backdrop-blur-md">
         <button
           onClick={() => setTheme("light")}
           className={`flex items-center justify-center w-10 h-10 rounded-full transition-all duration-200 ${
             theme === "light"
-              ? "bg-accent-app text-[#0A0B0A]"
+              ? "bg-accent-app text-[#FBFCFD]"
               : "text-text-tertiary hover:text-text-primary"
           }`}
           title="Switch to Light Theme"
@@ -113,7 +113,7 @@ export default function DesignSystemPage() {
           onClick={() => setTheme("dark")}
           className={`flex items-center justify-center w-10 h-10 rounded-full transition-all duration-200 ${
             theme === "dark"
-              ? "bg-accent-app text-[#0A0B0A]"
+              ? "bg-accent-app text-[#FBFCFD]"
               : "text-text-tertiary hover:text-text-primary"
           }`}
           title="Switch to Dark Theme"
@@ -126,7 +126,7 @@ export default function DesignSystemPage() {
 
       {/* Copy notification toast */}
       {toastMessage && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 bg-accent-app text-[#0A0B0A] rounded-brand-md shadow-brand-lg font-sans text-body-small font-semibold border border-accent-app animate-fade-in transition-all duration-300">
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 bg-accent-app text-[#FBFCFD] rounded-brand-md shadow-brand-lg font-sans text-body-small font-semibold border border-accent-app animate-fade-in transition-all duration-300">
           {toastMessage}
         </div>
       )}
@@ -166,12 +166,12 @@ export default function DesignSystemPage() {
           <div className="relative flex justify-between items-start">
             <span className="font-mono text-caption text-text-tertiary uppercase tracking-wider">BRAND</span>
             <div className="flex gap-2">
-              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-brand-full bg-[#E53935]/15 text-[#E53935] font-mono text-caption font-bold border border-[#E53935]/25">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#E53935] animate-pulse"></span>
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-brand-full bg-[#D01C25]/15 text-[#D01C25] font-mono text-caption font-bold border border-[#D01C25]/25">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#D01C25] animate-pulse"></span>
                 Breaking
               </span>
-              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-brand-full bg-[#22C55E]/15 text-[#22C55E] font-mono text-caption font-bold border border-[#22C55E]/25">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E]"></span>
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-brand-full bg-[#00A446]/15 text-[#00A446] font-mono text-caption font-bold border border-[#00A446]/25">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#00A446]"></span>
                 Live Updates
               </span>
             </div>
@@ -180,7 +180,7 @@ export default function DesignSystemPage() {
           <div className="relative my-8 max-w-xl">
             <div className="flex items-center gap-3 mb-4">
               {/* Logo icon */}
-              <div className="flex items-center justify-center w-12 h-12 rounded-brand-md bg-accent-app text-[#0A0B0A]">
+              <div className="flex items-center justify-center w-12 h-12 rounded-brand-md bg-accent-app text-[#FBFCFD]">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-7 h-7">
                   <path fillRule="evenodd" d="M14.615 1.595a.75.75 0 01.359.852L12.982 9.75h7.268a.75.75 0 01.548 1.262l-10.5 11.25a.75.75 0 01-1.272-.71l1.992-7.302H3.75a.75.75 0 01-.548-1.262l10.5-11.25a.75.75 0 01.913-.143z" clipRule="evenodd" />
                 </svg>
@@ -488,7 +488,7 @@ export default function DesignSystemPage() {
                   <span className="text-caption font-semibold text-text-secondary uppercase">Adjust Proportions:</span>
                   <div className="flex flex-col gap-2">
                     <div className="flex justify-between items-center text-caption">
-                      <span className="text-[#E53935] font-semibold">Left</span>
+                      <span className="text-[#D01C25] font-semibold">Left</span>
                       <span className="font-mono">{biasLeft}%</span>
                     </div>
                     <input
@@ -497,7 +497,7 @@ export default function DesignSystemPage() {
                       max="100"
                       value={biasLeft}
                       onChange={(e) => adjustBias("left", parseInt(e.target.value))}
-                      className="w-full accent-[#E53935] cursor-pointer"
+                      className="w-full accent-[#D01C25] cursor-pointer"
                     />
                   </div>
                   <div className="flex flex-col gap-2">
@@ -516,7 +516,7 @@ export default function DesignSystemPage() {
                   </div>
                   <div className="flex flex-col gap-2">
                     <div className="flex justify-between items-center text-caption">
-                      <span className="text-[#3B82F6] font-semibold">Right</span>
+                      <span className="text-[#2A76E2] font-semibold">Right</span>
                       <span className="font-mono">{biasRight}%</span>
                     </div>
                     <input
@@ -525,7 +525,7 @@ export default function DesignSystemPage() {
                       max="100"
                       value={biasRight}
                       onChange={(e) => adjustBias("right", parseInt(e.target.value))}
-                      className="w-full accent-[#3B82F6] cursor-pointer"
+                      className="w-full accent-[#2A76E2] cursor-pointer"
                     />
                   </div>
                 </div>
@@ -778,7 +778,7 @@ export default function DesignSystemPage() {
         <div className="flex flex-col md:flex-row justify-between items-center border-t border-border-strong pt-6 pb-12 gap-6 text-caption font-mono text-text-tertiary">
           <div className="flex items-center gap-2">
             {/* Mini logo */}
-            <div className="flex items-center justify-center w-6 h-6 rounded-brand-sm bg-accent-app text-[#0A0B0A]">
+            <div className="flex items-center justify-center w-6 h-6 rounded-brand-sm bg-accent-app text-[#FBFCFD]">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
                 <path fillRule="evenodd" d="M14.615 1.595a.75.75 0 01.359.852L12.982 9.75h7.268a.75.75 0 01.548 1.262l-10.5 11.25a.75.75 0 01-1.272-.71l1.992-7.302H3.75a.75.75 0 01-.548-1.262l10.5-11.25a.75.75 0 01.913-.143z" clipRule="evenodd" />
               </svg>

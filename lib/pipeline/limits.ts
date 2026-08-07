@@ -74,25 +74,30 @@ export const ANALYSIS_BATCH_SIZE: number = (() => {
 })();
 
 /**
- * Analysis model via OpenRouter (§19). Must support structured outputs —
- * `generateObject` needs response_format/json_schema to force valid JSON.
+ * Primary analysis model via Google AI Studio (§19). Free tier ~1000+ RPD.
+ * gemini-2.5-flash is deprecated for new API users; gemini-2.0-flash is the
+ * stable equivalent. When Google daily quota is exhausted, the pipeline
+ * falls back to GROQ_MODEL.
  */
-export const ANALYSIS_MODEL = "google/gemini-2.5-flash";
-
-/** Embedding model via OpenRouter (§20). Returns 1536-dim vectors natively. */
-export const EMBEDDING_MODEL = "text-embedding-3-small";
+export const GOOGLE_MODEL = "gemini-2.0-flash";
 
 /**
- * Cap on analysis output tokens. The structured analysis is small JSON
- * (~400–800 tokens: summary, framing notes, loaded terms, disclaimer), so this
- * ceiling stays generous while remaining affordable: OpenRouter bills against
- * the REQUESTED max_tokens ceiling, and a 402 with "can only afford N tokens"
- * fails the whole call even though actual usage is far smaller. The 65535
- * default always 402s on unpaid accounts; 8000 402s once the free balance dips
- * below it, which silently broke every analysis call (§19). 2048 covers real
- * output with headroom and passes the affordability check on a drained balance.
+ * Fallback analysis model via Groq (§19). Free tier 14,400 RPD, 30 RPM.
+ * Llama 3.3 70B via OpenAI-compatible endpoint. Used when Google quota
+ * is exhausted for the day.
  */
-export const MAX_ANALYSIS_OUTPUT_TOKENS = 2_048;
+export const GROQ_MODEL = "llama-3.3-70b-versatile";
+
+/** Embedding model via Google AI (§20). Returns 1536-dim vectors natively. */
+export const EMBEDDING_MODEL = "gemini-embedding-001";
+
+/**
+ * Cap on analysis output tokens. 1024 accommodates the full structured analysis
+ * (summary, framing notes, loaded terms, disclaimer) without truncation on
+ * longer articles. Groq and Google free tiers have no affordability constraint
+ * on this value; the cap prevents runaway output.
+ */
+export const MAX_ANALYSIS_OUTPUT_TOKENS = 1_024;
 
 /** Embedding size — must match the `vector(1536)` column on article_analyses (§20). */
 export const EMBEDDING_DIMENSIONS = 1536;

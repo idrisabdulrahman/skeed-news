@@ -473,10 +473,10 @@ The sync route must:
 
 ## Two separate one-time setups
 
-Creating Oxylabs schedules and configuring Vercel Cron are two independent one-time steps. Neither one triggers the other.
+Creating Oxylabs schedules and configuring the cron trigger are two independent one-time steps. Neither one triggers the other.
 
-- `POST /api/oxylabs/schedules` â€” tells Oxylabs what to scrape hourly. Done once per source set.
-- Vercel Cron config â€” tells Vercel to call `/api/cron/pipeline` at :15 past every hour. Done once via `vercel.json`.
+- `POST /api/oxylabs/schedules` tells Oxylabs what to scrape hourly. Done once per source set.
+- GitHub Actions cron (`.github/workflows/cron.yml`) calls `/api/cron/pipeline` daily at midnight UTC. Done once via repository secrets (`APP_URL`, `CRON_SECRET`). Replace `0 0 * * *` with `15 * * * *` for hourly runs when Oxylabs Scheduler is active.
 
 Both must be completed for the pipeline to be fully automatic. Until Vercel Cron is configured, the process route must be called manually.
 
@@ -489,25 +489,25 @@ Process scheduled results by running the **scrape-to-insert pipeline** (section 
 - Do not save raw scheduled homepage results as articles.
 - Do not duplicate pipeline logic inside Scheduler; reuse the same validation, cleanup, dedupe, **URL existence check**, and **run logging** as manual scraping (section 9).
 
-## Automatic hourly pipeline
+## Automatic pipeline
 
 Scheduled result processing and AI analysis must run automatically after every Oxylabs run.
 
 Do not require manual intervention after schedules are created.
 
-The automatic pipeline flow is:
+The automatic pipeline flow:
 
 1. Oxylabs Scheduler runs its jobs at the top of every hour.
-2. A Vercel Cron Job fires 15 minutes later to give Oxylabs time to finish.
+2. GitHub Actions cron fires (daily at midnight UTC, or hourly at :15 when Oxylabs is active).
 3. The cron triggers `/api/cron/pipeline`, which runs both steps in sequence.
-4. Step one: process scheduled results â€” fetch completed Oxylabs job HTML, extract candidate links, reject non-article URLs, dedupe, scrape article detail pages, validate, and insert valid articles.
+4. Step one: process scheduled results, fetch completed Oxylabs job HTML, extract candidate links, reject non-article URLs, dedupe, scrape article detail pages, validate, and insert valid articles.
 5. Step two: immediately run AI analysis on all newly inserted articles that are still pending analysis.
-6. If step one fails, step two must still run â€” there may be pre-existing unanalyzed articles.
+6. If step one fails, step two must still run, there may be pre-existing unanalyzed articles.
 7. Log progress and completion for both steps.
 
 The cron route is internal only and must not be callable by browsers or users.
 
-Protect the cron route using the `CRON_SECRET` environment variable, which Vercel injects automatically on every cron request. Reject requests with a missing or wrong value with `401`.
+Protect the cron route using the `CRON_SECRET` environment variable. In production, the GitHub Actions workflow sends it as a `Bearer` token in the `Authorization` header. Reject requests with a missing or wrong value with `401`.
 
 In local development, skip the secret check so the route can be tested manually.
 
@@ -653,10 +653,11 @@ Canonical list lives in `.env.example`. Only `NEXT_PUBLIC_*` values may reach br
 | `SUPABASE_SERVICE_ROLE_KEY`                                                   | Service-role DB access for writes and pipeline reads                                    | server only     |
 | `OXY_WSA_USERNAME` / `OXY_WSA_PASSWORD`                                       | Oxylabs Web Scraper API + Scheduler auth                                                | server only     |
 | `SCRAPER_PROVIDER`                                                           | Scraper HTML source: `direct` (free plain fetch — branch default) or `oxylabs` (paid Web Scraper API) | server only     |
-| `OPENROUTER_API_KEY`                                                         | AI analysis (`google/gemini-2.5-flash`) + embeddings (`text-embedding-3-small` @ 1536 dims) via `@openrouter/ai-sdk-provider` | server only     |
+| `GOOGLE_GENERATIVE_AI_API_KEY`                                               | AI analysis primary (`gemini-2.5-flash`, ~1000+ RPD) + embeddings (`gemini-embedding-001` @ 1536 dims) via `@ai-sdk/google` + Google AI REST API (sections 19/20) | server only     |
+| `GROQ_API_KEY`                                                               | AI analysis fallback (`llama-3.3-70b-versatile`, 14,400 RPD free) via `@ai-sdk/groq` (section 19)                                    | server only     |
 | `SKEEM_ADMIN_SECRET`                                                         | Shared secret for `x-skeem-admin-secret` on action routes (section 15)                 | server only     |
 | `ANALYSIS_BATCH_SIZE`                                                         | Optional; articles analyzed per batch (default 5)                                       | server only     |
-| `CRON_SECRET`                                                                 | Protects `GET /api/cron/pipeline`; injected by Vercel, not in `.env.local` (section 18) | server only     |
+| `CRON_SECRET`                                                                 | Protects `GET /api/cron/pipeline`; stored as GitHub Actions secret, not in `.env.local` (section 18) | server only     |
 
 Keep this table and `.env.example` in sync when variables change.
 

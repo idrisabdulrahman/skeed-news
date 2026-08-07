@@ -7,7 +7,7 @@ import { Masthead } from "@/components/Masthead";
 import { Footer } from "@/components/Footer";
 import { getSavedArticles } from "@/lib/supabase/queries/saved";
 
-// Bookmarks are per-user and change at any time — always read fresh.
+// Bookmarks are per-user and change at any time - always read fresh.
 export const dynamic = "force-dynamic";
 
 export default async function SavedPage() {
@@ -24,7 +24,7 @@ export default async function SavedPage() {
 
       <main className="brand-container flex-1 w-full py-12">
         {!isSignedIn ? (
-          // Signed-out state — AnalysisGate-style modal auth prompt (no new route).
+          // Signed-out state - AnalysisGate-style modal auth prompt (no new route).
           <div className="flex flex-col items-center justify-center text-center max-w-lg mx-auto py-16">
             <div className="flex items-center justify-center w-12 h-12 rounded-brand-md bg-surface-app border border-border-subtle text-accent-app mb-5">
               <svg
@@ -84,6 +84,9 @@ export default async function SavedPage() {
           // Mirrors the home page's story-grid section (same card component).
           <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,240px)_minmax(0,1fr)] gap-10 lg:gap-16 items-start">
             <div className="lg:sticky lg:top-8">
+              <p className="text-caption text-accent-app font-medium uppercase tracking-widest mb-3">
+                Your reading list
+              </p>
               <h1 className="text-h3 md:text-h2 font-bold tracking-tight">
                 Saved articles
               </h1>
