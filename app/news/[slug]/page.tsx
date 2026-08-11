@@ -220,7 +220,7 @@ export default async function NewsDetailsPage({
       )}
 
       {/* Ft4 colophon */}
-      <Footer />
+      <Footer isSignedIn={isSignedIn} />
     </div>
   );
 }

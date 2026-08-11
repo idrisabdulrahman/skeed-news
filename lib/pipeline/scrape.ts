@@ -8,11 +8,13 @@ import type {
 } from "@/lib/pipeline/types";
 import {
   MAX_DETAIL_SCRAPES_PER_SOURCE,
+  MAX_PENDING_BEFORE_SCRAPE,
 } from "@/lib/pipeline/limits";
 import { extractHomepageLinks, isArticleCandidate } from "@/lib/parsing/links";
 import { dedupeUrls, normalizeTitle, slugify } from "@/lib/parsing/url";
 import { parseAndValidateArticle } from "@/lib/parsing/article";
 import {
+  countPendingArticles,
   getExistingOriginalUrls,
   getExistingTitles,
   insertArticle,
@@ -47,6 +49,42 @@ export async function runScrapePipeline(
 ): Promise<ScrapeSummary> {
   const { sources, perSource, getHomepageHtml, getDetailHtml } = options;
   const start = Date.now();
+
+  // Backlog guard (§16 cautious scraping): never scrape more homepage stories
+  // onto a pipeline that is already behind on analysis. When unanalyzed
+  // articles reach MAX_PENDING_BEFORE_SCRAPE, this run defers and returns a
+  // `deferred` summary — provider quota is finite, and a growing unanalyzed
+  // backlog would exhaust it. Applies to every trigger (manual /api/scrape,
+  // scheduled-result processing, cron) since they all share this engine.
+  // The cron's analysis step still runs afterwards (§18 step 2 is independent).
+  const pending = await countPendingArticles();
+  if (pending === null || pending >= MAX_PENDING_BEFORE_SCRAPE) {
+    const summary: ScrapeSummary = {
+      status: "deferred",
+      sourcesChecked: 0,
+      candidatesFound: 0,
+      candidatesRejected: 0,
+      duplicatesSkipped: 0,
+      detailPagesScraped: 0,
+      articlesInserted: 0,
+      articlesRejected: 0,
+      articlesFailed: 0,
+      totalDurationMs: Date.now() - start,
+      rejectionReasons: {},
+      perSource: [],
+    };
+    log("scrape deferred — analysis backlog too deep", {
+      pending: pending ?? "unknown",
+      threshold: MAX_PENDING_BEFORE_SCRAPE,
+    });
+    await writeLog({
+      level: "warn",
+      scope: LOG_SCOPE,
+      message: "Scrape deferred (analysis backlog)",
+      context: { ...summary, pending },
+    });
+    return summary;
+  }
 
   const rejectionReasons: Partial<Record<RejectionReason, number>> = {};
   const perSourceResults: SourceResult[] = [];

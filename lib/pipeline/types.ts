@@ -98,7 +98,8 @@ export interface AnalysisSummary {
 
 /** The final run summary object (§9). Returned in the API response + logged. */
 export interface ScrapeSummary {
-  status: "completed" | "failed";
+  /** `deferred` = skipped by the backlog guard (§16 cautious scraping). */
+  status: "completed" | "failed" | "deferred";
   sourcesChecked: number;
   candidatesFound: number;
   candidatesRejected: number;

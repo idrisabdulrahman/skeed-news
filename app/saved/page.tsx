@@ -1,5 +1,4 @@
 import React from "react";
-import Link from "next/link";
 import { SignInButton, SignUpButton } from "@clerk/nextjs";
 import { auth } from "@clerk/nextjs/server";
 import { StoryCard } from "@/components/StoryCard";
@@ -63,12 +62,12 @@ export default async function SavedPage() {
               </SignUpButton>
             </div>
 
-            <Link
+            {/* <Link
               href="/"
               className="mt-6 text-caption text-text-tertiary hover:text-accent-app transition-colors duration-200"
             >
               ← Back to Top News
-            </Link>
+            </Link> */}
           </div>
         ) : articles.length === 0 ? (
           // Signed in with no bookmarks yet.
@@ -105,7 +104,7 @@ export default async function SavedPage() {
       </main>
 
       {/* Ft4 colophon */}
-      <Footer />
+      <Footer isSignedIn={isSignedIn} />
     </div>
   );
 }

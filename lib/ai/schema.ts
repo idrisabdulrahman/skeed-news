@@ -1,6 +1,9 @@
 import { z } from "zod";
+import { CATEGORY_OPTIONS, type ArticleCategory } from "@/lib/categories";
 
-
+// Re-export the shared taxonomy (defined once in lib/categories.ts): the model
+// prompt, chips, and category pages all read the same list.
+export { CATEGORY_OPTIONS, type ArticleCategory };
 export const sentimentLabelSchema = z.enum(["positive", "neutral", "negative"]);
 export const politicalFramingLabelSchema = z.enum([
   "left",
@@ -14,7 +17,12 @@ export const politicalFramingLabelSchema = z.enum([
 // return decimals; we normalize to sum 100 after validation.
 const percentage = z.number().min(0).max(100);
 
+export const categorySchema = z.enum(CATEGORY_OPTIONS);
+
 export const analysisSchema = z.object({
+  category: categorySchema.describe(
+    "The single best-fit news category for this article. Pick the ONE category that fits best.",
+  ),
   summary: z
     .string()
     .min(1)

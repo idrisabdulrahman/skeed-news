@@ -13,7 +13,7 @@ import type {
 import type { ArticleCard, ArticleDetail } from "@/lib/types/article";
 import { URL_IN_CHUNK, EMBEDDING_DIMENSIONS } from "@/lib/pipeline/limits";
 import { normalizeTitle } from "@/lib/parsing/url";
-import { categoryKey } from "@/lib/categories";
+import { canonicalCategory, type ArticleCategory } from "@/lib/categories";
 
 // Read layer for the pages. Returns the exact ArticleCard / ArticleDetail shapes
 // the UI already consumes so the pages are a drop-in swap from the old mock.
@@ -83,7 +83,7 @@ function toArticleCard(
     slug: row.slug,
     title: row.title,
     imageUrl: row.image_url,
-    sourceCategory: "News", // UI-only, not persisted
+    sourceCategory: row.category ?? "News",
     region: "", // UI-only, not persisted
     sentimentLabel: analysis.sentiment_label,
     biasLabel: analysis.bias_label,
@@ -146,7 +146,7 @@ function toArticleDetail(
     author: sourceName, // UI-only fallback: source name
     publishedAt: row.published_at,
     readTimeMinutes: estimateReadMinutes(row.raw_text),
-    sourceCategory: "News", // UI-only, not persisted
+    sourceCategory: row.category ?? "News",
     region: "", // UI-only, not persisted
     canonicalUrl: row.canonical_url ?? row.original_url,
     body: toBodyParagraphs(row.raw_text, analysis.summary),
@@ -186,17 +186,59 @@ function bucketFor(
 
 // ─── queries ──────────────────────────────────────────────────────────────
 
+// Fallback: latest article by published_at even if unanalyzed.
+// Used on the landing page so the UI never shows completely empty.
+export async function getLatestArticleFallback(): Promise<ArticleCard | null> {
+  const supabase = getSupabaseReadClient();
+  const { data, error } = await supabase
+    .from("articles")
+    .select("*, article_analyses(*), sources(id, name)")
+    .order("published_at", { ascending: false })
+    .limit(1);
+
+  if (error) {
+    console.error("[queries/articles] getLatestArticleFallback failed:", error.message);
+    return null;
+  }
+
+  const rows = (data ?? []) as unknown as JoinedArticleRow[];
+  const row = rows[0];
+  if (!row) return null;
+
+  const analysis = firstAnalysis(row.article_analyses);
+  // If it has analysis, return full card. If not, return a minimal card
+  // with placeholder analysis fields so the UI doesn't break.
+  if (analysis) {
+    return toArticleCard(row, analysis);
+  }
+  return {
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    imageUrl: row.image_url,
+    sourceCategory: row.category ?? "News",
+    region: "",
+    sentimentLabel: "neutral",
+    biasLabel: "unclear",
+    leftPercentage: 33,
+    centerPercentage: 34,
+    rightPercentage: 33,
+    confidence: 0,
+    sourcesCount: 1,
+    publishedAt: row.published_at,
+  };
+}
+
 // Analyzed articles, most recently analyzed first, mapped to home-page cards.
-// Ordering by analyzed_at (nulls last) keeps newly scraped-but-unanalyzed rows
-// out of the returned set — fetching by published_at alone can surface rows that
-// all lack an analysis and yield an empty feed even when analyzed stories exist
-// (the joined-analysis filter runs in JS per §21).
+// Ordering by published_at (newest first) gives the latest news. We still
+// filter for analyzed articles in JS (§21) — the join ensures only articles
+// with analysis are usable, and the limit gives us enough candidates.
 export async function getTopArticles(limit = 30): Promise<ArticleCard[]> {
   const supabase = getSupabaseReadClient();
   const { data, error } = await supabase
     .from("articles")
     .select(SELECT_WITH_JOINS)
-    .order("analyzed_at", { ascending: false, nullsFirst: false })
+    .order("published_at", { ascending: false })
     .limit(limit);
 
   if (error) {
@@ -212,6 +254,41 @@ export async function getTopArticles(limit = 30): Promise<ArticleCard[]> {
     cards.push(toArticleCard(row, analysis));
   }
   return cards;
+}
+
+// All analyzed articles, newest by published_at first. Used by the
+// /category/news "all news" page — no category filter, just every story the
+// pipeline has touched. Pagination happens in JS (§21 joined-filter idiom):
+// fetch a bounded window of the newest articles, keep the analyzed ones, slice
+// the page. `total` is the analyzed count within the window — page counts stay
+// honest while the analyzed-set converges (§9 pending-analysis check).
+export async function getAllArticles(
+  page = 1,
+  perPage = 15,
+): Promise<{ articles: ArticleCard[]; total: number }> {
+  const supabase = getSupabaseReadClient();
+  const { data, error } = await supabase
+    .from("articles")
+    .select(SELECT_WITH_JOINS)
+    .order("published_at", { ascending: false })
+    .limit(CATEGORY_PAGE_WINDOW); // more than enough for the analyzed corpus
+
+  if (error) {
+    console.error("[queries/articles] getAllArticles failed:", error.message);
+    return { articles: [], total: 0 };
+  }
+
+  const rows = (data ?? []) as unknown as JoinedArticleRow[];
+  const cards: ArticleCard[] = [];
+  for (const row of rows) {
+    const analysis = firstAnalysis(row.article_analyses);
+    if (!analysis) continue;
+    cards.push(toArticleCard(row, analysis));
+  }
+
+  const total = cards.length;
+  const start = (page - 1) * perPage;
+  return { articles: cards.slice(start, start + perPage), total };
 }
 
 // Single analyzed article by slug, mapped to the details shape. Returns null
@@ -247,64 +324,92 @@ export async function getArticleBySlug(
 
 // ─── categories (§9 categories feature) ───────────────────────────────────────
 
-// Categories are the distinct, non-null `category` values on ANALYZED articles,
-// sorted by how many articles they hold (largest first, cap 12 — prompt
-// decision 3). Categories only appear after the backfill SQL runs, so an empty
-// list is a valid state — the masthead then simply omits the chip row.
+// Window for JS-side pagination on the category pages (§21: analyzed-ness is a
+// joined-table condition, so it cannot be filtered in SQL). Fetch the newest
+// N articles, filter analyzed in JS, paginate in JS. `total` is the analyzed
+// count within the window — page counts stay honest without a DB-level join
+// filter. Shared by the "all news" page and per-category pages.
+const CATEGORY_PAGE_WINDOW = 500;
+
+/**
+ * Categories are the canonical sections of ANALYZED articles only (§19 LEFT-JOIN
+ * semantics — a chip must lead to a page that actually has stories, so
+ * scrape-era labels from unanalyzed articles never render), sorted by how many
+ * analyzed articles they hold (largest first, cap 12 — prompt decision 3).
+ * Labels resolve through the canonical taxonomy (lib/categories.ts), so
+ * "Politics" + "politics" + "World News" + "us" all fold into one chip each —
+ * no duplicates. "News" resolves too but is filtered by the chip row (static
+ * first chip). An empty list is a valid state — the masthead then renders only
+ * the static "News" chip.
+ */
 export async function getCategories(): Promise<string[]> {
   const supabase = getSupabaseReadClient();
   const { data, error } = await supabase
     .from("articles")
-    .select("category")
-    .not("category", "is", null);
+    .select(SELECT_WITH_JOINS);
 
   if (error) {
     console.error("[queries/articles] getCategories failed:", error.message);
     return [];
   }
 
-  const counts = new Map<string, number>();
-  for (const row of data ?? []) {
-    const label = (row as { category: string }).category.trim();
-    if (label) counts.set(label, (counts.get(label) ?? 0) + 1);
+  const counts = new Map<ArticleCategory, number>();
+  for (const row of (data ?? []) as unknown as JoinedArticleRow[]) {
+    if (!firstAnalysis(row.article_analyses)) continue; // analyzed-only (§19)
+    if (!row.category) continue;
+    const canonical = canonicalCategory(row.category);
+    if (!canonical) continue; // junk labels never chip ("Sponsored Post", …)
+    counts.set(canonical, (counts.get(canonical) ?? 0) + 1);
   }
+
   return [...counts.entries()]
     .sort((a, b) => b[1] - a[1])
     .slice(0, 12)
     .map(([label]) => label);
 }
 
-// Analyzed articles in one category, newest first. The slug match is done in JS
-// (§21 joined-filter idiom): category labels like "Business & Markets" contain
-// characters that break ILIKE-from-slug patterns, and the dataset is small.
+// Analyzed articles in one category, newest first. Both sides of the match go
+// through the canonical taxonomy (lib/categories.ts) in JS (§21 joined-filter
+// idiom): /category/politics finds "Politics" AND "politics" AND any legacy
+// spelling, and "US News"/"U.S. News"/"us" all land on /category/us-news.
 export async function getArticlesByCategory(
   slug: string,
-): Promise<ArticleCard[]> {
+  page = 1,
+  perPage = 15,
+): Promise<{ articles: ArticleCard[]; total: number }> {
+  const target = canonicalCategory(slug);
+  if (!target) return { articles: [], total: 0 };
+
   const supabase = getSupabaseReadClient();
   const { data, error } = await supabase
     .from("articles")
     .select(SELECT_WITH_JOINS)
     .not("category", "is", null)
     .order("published_at", { ascending: false })
-    .limit(100);
+    .limit(CATEGORY_PAGE_WINDOW); // more than enough for the analyzed corpus
 
   if (error) {
     console.error(
       "[queries/articles] getArticlesByCategory failed:",
       error.message,
     );
-    return [];
+    return { articles: [], total: 0 };
   }
 
   const rows = (data ?? []) as unknown as JoinedArticleRow[];
-  const cards: ArticleCard[] = [];
+  const allCards: ArticleCard[] = [];
   for (const row of rows) {
-    if (categoryKey(row.category ?? "") !== slug) continue;
+    if (!row.category) continue;
+    if (canonicalCategory(row.category) !== target) continue;
     const analysis = firstAnalysis(row.article_analyses);
-    if (!analysis) continue; // analyzed-only filter, applied in JS (§21)
-    cards.push(toArticleCard(row, analysis));
+    if (!analysis) continue;
+    allCards.push(toArticleCard(row, analysis));
   }
-  return cards;
+
+  const total = allCards.length;
+  const start = (page - 1) * perPage;
+  const articles = allCards.slice(start, start + perPage);
+  return { articles, total };
 }
 
 // ─── write layer (scrape pipeline) ───────────────────────────────────────────
@@ -313,6 +418,33 @@ export async function getArticlesByCategory(
 
 // Postgres unique-violation code — used to treat a racing duplicate as a skip.
 const UNIQUE_VIOLATION = "23505";
+
+/**
+ * Backlog count for the scrape guard (§16 cautious scraping): number of
+ * articles with NO article_analyses row (LEFT-JOIN rule §19) — lightweight
+ * ids + join only, no raw_text. null on error; the caller fails closed and
+ * skips scraping rather than risk piling more onto an unanalyzable backlog.
+ */
+export async function countPendingArticles(): Promise<number | null> {
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("articles")
+    .select(SELECT_WITH_JOINS);
+
+  if (error) {
+    console.error(
+      "[queries/articles] countPendingArticles failed:",
+      error.message,
+    );
+    return null;
+  }
+
+  let pending = 0;
+  for (const row of (data ?? []) as unknown as JoinedArticleRow[]) {
+    if (!firstAnalysis(row.article_analyses)) pending++;
+  }
+  return pending;
+}
 
 /**
  * URL existence check (§9): return the subset of `original_url`s already stored.
@@ -498,12 +630,15 @@ export async function getPendingArticles(opts?: {
 }
 
 /** DB-ready analysis fields minus the ids the query layer owns. */
-type AnalysisFields = Omit<ArticleAnalysisInsert, "article_id" | "embedding">;
+type AnalysisFields = Omit<ArticleAnalysisInsert, "article_id" | "embedding"> & {
+  category: string;
+};
 
 /**
  * Save a full analysis + embedding for an article (§19/§20), then mark
  * analyzed_at — only after BOTH are written. Append-only per article: the
  * unique(article_id) constraint makes a re-run a skip, not a duplicate.
+ * Also updates articles.category when the AI provides one.
  */
 export async function saveAnalysis(
   articleId: string,
@@ -512,8 +647,9 @@ export async function saveAnalysis(
 ): Promise<"saved" | "duplicate" | "error"> {
   const supabase = getSupabaseAdminClient();
 
+  const { category, ...analysisFields } = fields;
   const row: ArticleAnalysisInsert = {
-    ...fields,
+    ...analysisFields,
     article_id: articleId,
     embedding,
   };
@@ -526,7 +662,7 @@ export async function saveAnalysis(
   }
 
   // analyzed_at only after the analysis row (with embedding) is saved (§19/§20).
-  const stamped = await stampAnalyzedAt(articleId);
+  const stamped = await stampAnalyzedAt(articleId, category);
   return stamped ? "saved" : "error";
 }
 
@@ -554,11 +690,13 @@ export async function saveEmbedding(
 }
 
 // Set analyzed_at now. Separated so both save paths stamp consistently.
-async function stampAnalyzedAt(articleId: string): Promise<boolean> {
+async function stampAnalyzedAt(articleId: string, category?: string): Promise<boolean> {
   const supabase = getSupabaseAdminClient();
+  const update: { analyzed_at: string; category?: string } = { analyzed_at: new Date().toISOString() };
+  if (category) update.category = category;
   const { error } = await supabase
     .from("articles")
-    .update({ analyzed_at: new Date().toISOString() })
+    .update(update)
     .eq("id", articleId);
   if (error) {
     console.error("[queries/articles] stampAnalyzedAt failed:", error.message);

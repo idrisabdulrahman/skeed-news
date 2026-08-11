@@ -17,7 +17,7 @@ const BoltIcon = ({ className = "" }: { className?: string }) => (
 // the landing page. Wordmark on top, Clerk card below, back link at the foot.
 export default function SignInPage() {
   return (
-    <div className="light min-h-[100dvh] bg-bg-app text-text-primary flex flex-col items-center justify-center px-4 py-12 font-sans">
+    <div className="light min-h-dvh bg-bg-app text-text-primary flex flex-col items-center justify-center px-4 py-12 font-sans">
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-8 text-center">
           <Link href="/" className="flex items-center gap-2.5">
@@ -26,21 +26,21 @@ export default function SignInPage() {
             </span>
             <span className="font-bold text-lg tracking-tight">SKEEM NEWS</span>
           </Link>
-          <p className="mt-3 text-caption text-text-tertiary">
+          {/* <p className="mt-3 text-caption text-text-tertiary">
             Facts first. Framing visible.
-          </p>
+          </p> */}
         </div>
 
         <SignIn appearance={clerkAppearance} />
 
-        <p className="mt-6 text-center">
+        {/* <p className="mt-6 text-center">
           <Link
             href="/"
             className="text-caption text-text-tertiary hover:text-accent-app transition-colors duration-200"
           >
             ← Back to Top News
           </Link>
-        </p>
+        </p> */}
       </div>
     </div>
   );

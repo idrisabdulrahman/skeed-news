@@ -4,7 +4,7 @@ on:
   schedule:
     # Daily at midnight UTC (matches original vercel.json config).
     # Adjust to "15 * * * *" for hourly runs when Oxylabs Scheduler is active.
-    - cron: "0 0 * * *"
+    - cron: "15 * * * *"
   workflow_dispatch: # Allow manual trigger from GitHub Actions UI
 
 jobs:

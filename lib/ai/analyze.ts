@@ -2,19 +2,30 @@ import "server-only";
 import { generateText } from "ai";
 import type { LanguageModel } from "ai";
 import { google, groq } from "@/lib/ai/provider";
-import { analysisSchema, type AnalysisResult } from "@/lib/ai/schema";
+import {
+  analysisSchema,
+  CATEGORY_OPTIONS,
+  type AnalysisResult,
+  type ArticleCategory,
+} from "@/lib/ai/schema";
 import type { ArticleAnalysisInsert } from "@/lib/supabase/types";
 import type { SentimentLabel, BiasLabel } from "@/lib/types/article";
-import { GOOGLE_MODEL, GROQ_MODEL, MAX_ANALYSIS_INPUT_CHARS, MAX_ANALYSIS_OUTPUT_TOKENS } from "@/lib/pipeline/limits";
+import {
+  GOOGLE_MODEL,
+  GROQ_MODEL,
+  OPENROUTER_MODEL,
+  MAX_ANALYSIS_INPUT_CHARS,
+  MAX_ANALYSIS_OUTPUT_TOKENS,
+} from "@/lib/pipeline/limits";
 
 // Structured analysis for one article (AGENTS.md §19). Server-only  -  the
 // API key never reaches the browser (§21). Uses generateText + manual JSON
 // extraction + Zod validation because provider models may produce markdown-
 // wrapped JSON that fails json_schema enforcement.
 //
-// Two-provider fallback: Google Gemini (primary, ~1000+ RPD free) → Groq
-// Llama (fallback, 14,400 RPD free). Once Google daily quota is exhausted
-// for a run, all subsequent articles go directly to Groq.
+// Two-provider fallback: Groq Llama (preferred, 14,400 RPD free) → Google
+// Gemini (fallback, ~1000+ RPD free). Once a provider's daily quota is exhausted
+// for a run, all subsequent articles go to the next tier.
 //
 // Failures are classified so the caller can bucket them correctly (§19):
 //   • AiQuotaError    -  provider daily cap; NOT retried (pointless within a run).
@@ -63,8 +74,10 @@ function isDailyQuotaMessage(message: string): boolean {
 
 // ─── Fallback state ──────────────────────────────────────────────────────────
 
-// Once Google hits daily quota during a run, skip it for subsequent articles.
+// Once a provider's daily quota is hit during a run, skip it for the rest of
+// the run (calling a quota'd provider costs time, not money).
 let googleExhausted = false;
+let groqExhausted = false;
 
 // ─── Model calls ─────────────────────────────────────────────────────────────
 
@@ -77,7 +90,27 @@ Rules:
 - If evidence is weak, use "unclear" and keep confidence low.
 - summary must be neutral and factual, with no opinion or framing.
 - Always include a disclaimer that the framing is AI-estimated, not objective truth.
-- Return ONLY valid JSON matching the schema. No markdown, no code fences, no explanation.`;
+- category must be ONE of: "U.S. News", "World", "Politics", "Business", "Technology", "Science", "Health", "Sports", "Entertainment", "Culture", "Opinion". Pick the single best fit based on the article's subject matter.
+- Return ONLY valid JSON matching the schema. No markdown, no code fences, no explanation.
+
+Output shape — return ONLY JSON with exactly these 12 fields:
+
+{
+  "category": "Politics",
+  "summary": "A concise, neutral, factual summary of the article with no opinion or framing.",
+  "sentimentScore": -0.2,
+  "sentimentLabel": "negative",
+  "leftPercentage": 55,
+  "centerPercentage": 30,
+  "rightPercentage": 15,
+  "politicalFramingLabel": "left",
+  "confidence": 0.7,
+  "framingNotes": "The article emphasizes one side's concerns, uses loaded phrasing about a policy, and omits the opposing view.",
+  "loadedTerms": ["landmark", "hard-line"],
+  "disclaimer": "This framing is AI-estimated, not objective truth."
+}
+
+Copy the STRUCTURE only. Every value above is an example and must be derived from the article text, never copied. Keep percentages summing to 100 and labels matching the schema enums.`;
 
 function buildPrompt(article: { title: string; rawText: string | null }): string {
   const body = (article.rawText ?? "").slice(0, MAX_ANALYSIS_INPUT_CHARS);
@@ -88,12 +121,47 @@ function clamp(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n));
 }
 
+// Providers disagree on cosmetic details — Groq returns "Neutral" (capitalised)
+// where the schema demands "neutral", and categories arrive as "US News",
+// "U.S. news", or "us". Normalise those value shapes BEFORE Zod validation so a
+// cosmetic difference never discards an otherwise-valid analysis (§19
+// invalid-output gate). Everything else stays strict.
+function normalizeOutput(raw: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...raw };
+
+  for (const key of ["summary", "framingNotes", "disclaimer"] as const) {
+    if (typeof out[key] === "string") out[key] = (out[key] as string).trim();
+  }
+  if (typeof out.sentimentLabel === "string") {
+    out.sentimentLabel = (out.sentimentLabel as string).trim().toLowerCase();
+  }
+  if (typeof out.politicalFramingLabel === "string") {
+    out.politicalFramingLabel = (out.politicalFramingLabel as string).trim().toLowerCase();
+  }
+  if (typeof out.category === "string") {
+    out.category = resolveCategory(out.category as string);
+  }
+  return out;
+}
+
+/** Map a model-provided category to its canonical option ("US news" → "U.S. News"); "News" when unresolvable. */
+export function resolveCategory(label: string): ArticleCategory {
+  const key = label.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+  for (const option of CATEGORY_OPTIONS) {
+    if (option.toLowerCase().replace(/[^a-z0-9]+/g, "") === key) return option;
+  }
+  return "News";
+}
+
 // Extract JSON from model text: strip markdown fences, trailing commas, parse + validate.
 function extractJson(text: string): AnalysisResult {
   let raw = text.replace(/```(?:json)?\s*\n?/gi, "").replace(/```\s*$/gm, "").trim();
   raw = raw.replace(/,\s*([\]}])/g, "$1");
   const parsed: unknown = JSON.parse(raw);
-  return analysisSchema.parse(parsed);
+  if (typeof parsed !== "object" || parsed === null) {
+    throw new SyntaxError("AI output is not a JSON object");
+  }
+  return analysisSchema.parse(normalizeOutput(parsed as Record<string, unknown>));
 }
 
 // Single generateText call against any resolved model. Uses manual JSON
@@ -113,23 +181,106 @@ async function callProvider(
   return extractJson(text);
 }
 
-// Primary + fallback. Google first; once exhausted, Groq for the rest of the run.
-async function callModel(article: { title: string; rawText: string | null }): Promise<AnalysisResult> {
-  if (!googleExhausted) {
+// Primary + fallbacks, in order: Groq (free, preferred) → Google (free) →
+// OpenRouter (paid, no hard daily free cap). Each tier is skipped for the rest
+// of the run once its daily quota is hit. Returns the model actually used so
+// the saved `article_analyses.model` reflects the real provider.
+async function callModel(article: {
+  title: string;
+  rawText: string | null;
+}): Promise<{ analysis: AnalysisResult; model: string }> {
+  if (!groqExhausted) {
     try {
-      return await callProvider(google(GOOGLE_MODEL), article);
+      return {
+        analysis: await callProvider(groq(GROQ_MODEL), article),
+        model: GROQ_MODEL,
+      };
     } catch (err) {
       const msg = (err as Error).message ?? "";
-      if (isGoogleDailyQuota(msg)) {
-        googleExhausted = true;
-        console.log("[analyze] Google quota exhausted  -  switching to Groq for remainder of run");
-        // Fall through to Groq below.
+      if (isGroqDailyLimit(msg)) {
+        groqExhausted = true;
+        console.log(
+          "[analyze] Groq daily tokens exhausted  -  switching to Google for remainder of run",
+        );
+        // Fall through to Google below.
       } else {
         throw err;
       }
     }
   }
-  return await callProvider(groq(GROQ_MODEL), article);
+
+  if (!googleExhausted) {
+    try {
+      return {
+        analysis: await callProvider(google(GOOGLE_MODEL), article),
+        model: GOOGLE_MODEL,
+      };
+    } catch (err) {
+      const msg = (err as Error).message ?? "";
+      if (isGoogleDailyQuota(msg)) {
+        googleExhausted = true;
+        console.log(
+          "[analyze] Google quota exhausted  -  switching to OpenRouter for remainder of run",
+        );
+        // Fall through to OpenRouter below.
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  // Paid last resort — no daily free cap, used only when both free tiers are
+  // quota'd (otherwise the pipeline would sit idle until the next day).
+  return {
+    analysis: await callOpenRouter(article),
+    model: OPENROUTER_MODEL,
+  };
+}
+
+// Raw OpenRouter call (§19). Same JSON contract as the SDK providers; the
+// extraction + Zod validation below is shared. Raw fetch (no SDK dependency)
+// mirrors the OpenRouter embedding fallback in lib/ai/embed.ts.
+async function callOpenRouter(article: {
+  title: string;
+  rawText: string | null;
+}): Promise<AnalysisResult> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) {
+    throw new Error("[analyze] OPENROUTER_API_KEY is not set.");
+  }
+
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: OPENROUTER_MODEL,
+      temperature: 0.4,
+      max_tokens: MAX_ANALYSIS_OUTPUT_TOKENS,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: buildPrompt(article) },
+      ],
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(
+      `[analyze] OpenRouter call failed (${res.status}): ${body.slice(0, 200)}`,
+    );
+  }
+
+  const data = (await res.json()) as {
+    choices?: { message?: { content?: string } }[];
+  };
+  const text = data.choices?.[0]?.message?.content;
+  if (typeof text !== "string" || !text.trim()) {
+    throw new SyntaxError("OpenRouter returned empty content");
+  }
+  return extractJson(text);
 }
 
 // ─── DB row mapping ──────────────────────────────────────────────────────────
@@ -166,13 +317,16 @@ function deriveBiasLabel(
 }
 
 /** What analyzeArticle produces: a DB-ready insert minus the article_id/embedding. */
-export type AnalysisRowInput = Omit<ArticleAnalysisInsert, "article_id" | "embedding">;
+export type AnalysisRowInput = Omit<ArticleAnalysisInsert, "article_id" | "embedding"> & {
+  category: ArticleCategory;
+};
 
 function toRow(a: AnalysisResult, model: string): AnalysisRowInput {
   const pct = normalizePercentages(a);
   const biasLabel = deriveBiasLabel(pct, a.politicalFramingLabel as BiasLabel, a.confidence);
   const biasScore = clamp((pct.right - pct.left) / 100, -1, 1);
   return {
+    category: a.category,
     summary: a.summary,
     sentiment_score: clamp(a.sentimentScore, -1, 1),
     sentiment_label: a.sentimentLabel as SentimentLabel,
@@ -209,7 +363,8 @@ export async function analyzeArticle(
   article: ArticleForAnalysis,
 ): Promise<AnalysisRowInput> {
   try {
-    return toRow(await callModel(article), googleExhausted ? GROQ_MODEL : GOOGLE_MODEL);
+    const { analysis, model } = await callModel(article);
+    return toRow(analysis, model);
   } catch (err) {
     const message = (err as Error).message ?? "";
 
@@ -229,7 +384,8 @@ export async function analyzeArticle(
 
     // Single retry (§19).
     try {
-      return toRow(await callModel(article), googleExhausted ? GROQ_MODEL : GOOGLE_MODEL);
+      const { analysis, model } = await callModel(article);
+      return toRow(analysis, model);
     } catch (retryErr) {
       const retryMessage = (retryErr as Error).message ?? "";
       if (isDailyQuotaMessage(retryMessage)) {

@@ -58,14 +58,12 @@ export async function Masthead({
           </div>
         </div>
 
-        {categories.length > 0 && (
-          <nav aria-label="Sections" className="border-t border-border-subtle py-3">
-            <CategoryChipRow
-              categories={categories}
-              activeSlug={activeCategorySlug}
-            />
-          </nav>
-        )}
+        <nav aria-label="Sections" className="border-t border-border-subtle py-3">
+          <CategoryChipRow
+            categories={categories}
+            activeSlug={activeCategorySlug}
+          />
+        </nav>
       </div>
       <div className="border-t border-border-strong" />
     </header>

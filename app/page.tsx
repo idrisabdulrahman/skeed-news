@@ -1,10 +1,11 @@
 import React from "react";
 import Link from "next/link";
+import { auth } from "@clerk/nextjs/server";
 import { Masthead } from "@/components/Masthead";
 import { Footer } from "@/components/Footer";
 import { StoryCard } from "@/components/StoryCard";
 import { BiasDemo } from "@/components/BiasDemo";
-import { getTopArticles } from "@/lib/supabase/queries/articles";
+import { getTopArticles, getLatestArticleFallback } from "@/lib/supabase/queries/articles";
 
 // Read fresh from Supabase for the Latest Briefings section (section 6).
 export const dynamic = "force-dynamic";
@@ -392,13 +393,17 @@ function SourcesSection() {
 
 function LatestBriefingsSection({
   articles,
+  fallbackArticle,
+  isSignedIn,
 }: {
   articles: Awaited<ReturnType<typeof getTopArticles>>;
+  fallbackArticle: Awaited<ReturnType<typeof getLatestArticleFallback>>;
+  isSignedIn: boolean;
 }) {
-  const featured = articles[0];
+  const featured = articles[0] ?? fallbackArticle;
   const rest = articles.slice(1);
 
-  if (articles.length === 0) {
+  if (!featured) {
     return (
       <section className="py-20 border-t border-border-subtle">
         <div className="border border-border-subtle p-12 text-center">
@@ -412,6 +417,9 @@ function LatestBriefingsSection({
       </section>
     );
   }
+
+  // If we're showing a fallback (unanalyzed) article, add a subtle indicator
+  const isFallback = !!fallbackArticle && articles.length === 0;
 
   return (
     <section className="py-20 border-t border-border-subtle">
@@ -427,13 +435,29 @@ function LatestBriefingsSection({
             Newest first, from the live pipeline. Open any story for the full
             analysis.
           </p>
+          {isFallback && (
+            <p className="mt-3 text-caption text-text-quaternary italic">
+              Showing latest scraped story — analysis pending.
+            </p>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-12">
-          {featured && <StoryCard article={featured} featured />}
-          {rest.map((article) => (
-            <StoryCard key={article.id} article={article} />
-          ))}
+        <div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-12">
+            <StoryCard article={featured} featured />
+            {rest.map((article) => (
+              <StoryCard key={article.id} article={article} />
+            ))}
+          </div>
+          <div className="mt-10 text-center">
+            <Link
+              href={isSignedIn ? "/category/news" : "/sign-in"}
+              className="inline-flex items-center gap-2 h-11 px-6 border border-border-strong text-text-primary text-body-small font-medium rounded-brand-sm transition-colors duration-200 hover:border-text-tertiary hover:text-accent-app active:translate-y-px"
+            >
+              More news
+              <ArrowRightIcon className="w-4 h-4" />
+            </Link>
+          </div>
         </div>
       </div>
     </section>
@@ -556,9 +580,9 @@ function CtaSection() {
             Sign in
           </Link>
         </div>
-        <p className="mt-8 text-caption text-text-quaternary">
+        {/* <p className="mt-8 text-caption text-text-quaternary">
           Facts first. Framing visible.
-        </p>
+        </p> */}
       </div>
     </section>
   );
@@ -569,11 +593,24 @@ function CtaSection() {
 export default async function LandingPage() {
   let articles: Awaited<ReturnType<typeof getTopArticles>> = [];
   try {
-    articles = await getTopArticles();
+    articles = await getTopArticles(2);
   } catch {
     // Pipeline may be empty or Supabase unreachable; landing must still render.
     articles = [];
   }
+
+  // Fallback: if no analyzed articles, show the latest scraped article (even unanalyzed)
+  let fallbackArticle: Awaited<ReturnType<typeof getLatestArticleFallback>> = null;
+  if (articles.length === 0) {
+    try {
+      fallbackArticle = await getLatestArticleFallback();
+    } catch {
+      fallbackArticle = null;
+    }
+  }
+
+  const { userId } = await auth();
+  const isSignedIn = Boolean(userId);
 
   return (
     <div id="theme-root" className="light flex-1 bg-bg-app text-text-primary flex flex-col font-sans">
@@ -585,13 +622,13 @@ export default async function LandingPage() {
         <AnalysisShowcaseSection />
         <MethodSection />
         <SourcesSection />
-        <LatestBriefingsSection articles={articles} />
+        <LatestBriefingsSection articles={articles} fallbackArticle={fallbackArticle} isSignedIn={isSignedIn} />
         <AudienceSection />
         <EditorialSection />
         <CtaSection />
       </main>
 
-      <Footer />
+      <Footer isSignedIn={isSignedIn} />
     </div>
   );
 }

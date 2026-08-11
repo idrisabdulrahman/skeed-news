@@ -148,7 +148,7 @@ export async function getSavedArticles(userId: string): Promise<ArticleCard[]> {
       slug: article.slug,
       title: article.title,
       imageUrl: article.image_url,
-      sourceCategory: "News", // UI-only, not persisted
+      sourceCategory: article.category ?? "News",
       region: "", // UI-only, not persisted
       sentimentLabel: analysis.sentiment_label,
       biasLabel: analysis.bias_label,

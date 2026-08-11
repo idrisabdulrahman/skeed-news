@@ -33,14 +33,14 @@ export default function SignUpPage() {
 
         <SignUp appearance={clerkAppearance} />
 
-        <p className="mt-6 text-center">
+        {/* <p className="mt-6 text-center">
           <Link
             href="/"
             className="text-caption text-text-tertiary hover:text-accent-app transition-colors duration-200"
           >
             ← Back to Top News
           </Link>
-        </p>
+        </p> */}
       </div>
     </div>
   );

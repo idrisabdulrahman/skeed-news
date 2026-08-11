@@ -33,6 +33,15 @@ export const MIN_PARAGRAPH_CHARS = 40;
 export const OXYLABS_TIMEOUT_MS = 180_000;
 
 /**
+ * Backlog guard for scraping (§16 cautious scraping): when this many articles
+ * are still awaiting analysis (no article_analyses row), a scrape run defers
+ * entirely instead of piling more unanalyzed stories into the queue. Keeps the
+ * analysis backlog bounded so provider quotas are spent on the existing queue,
+ * not on an ever-growing one.
+ */
+export const MAX_PENDING_BEFORE_SCRAPE = 25;
+
+/**
  * Direct-fetch provider timeout (ms) (SCRAPER_PROVIDER=direct). No proxy
  * involved — a live page either arrives in seconds or is blocked, so 30s is
  * generous; blocked sites throw and the engine isolates them per source.
@@ -88,6 +97,14 @@ export const GOOGLE_MODEL = "gemini-2.0-flash";
  */
 export const GROQ_MODEL = "llama-3.3-70b-versatile";
 
+/**
+ * Last-resort analysis provider via OpenRouter (§19). Tiny, cheap, and without
+ * a hard daily free cap — used only when BOTH Google and Groq daily quotas are
+ * exhausted, so a quota wall mid-run never strands the pipeline until the next
+ * day. OPENROUTER_API_KEY is server-only (AGENTS.md §21).
+ */
+export const OPENROUTER_MODEL = "openai/gpt-4o-mini";
+
 /** Embedding model via Google AI (§20). Returns 1536-dim vectors natively. */
 export const EMBEDDING_MODEL = "gemini-embedding-001";
 
@@ -107,4 +124,5 @@ export const EMBEDDING_DIMENSIONS = 1536;
  * well under the model's context window; analysis quality does not need the
  * entire body for long articles.
  */
-export const MAX_ANALYSIS_INPUT_CHARS = 12_000;
+// ~4K input tokens per analysis at this length; keeps 25 articles under Groq's 100K TPD budget.
+export const MAX_ANALYSIS_INPUT_CHARS = 6_000;
