@@ -18,13 +18,13 @@ jobs:
     steps:
       - name: Scrape
         run: |
-          curl -sS --fail-with-body --max-time 300 -X POST "https://${{ secrets.APP_URL }}/api/scrape" \
+          curl -sS --fail-with-body --max-time 300 -X POST "${{ secrets.APP_URL }}/api/scrape" \
             -H "Content-Type: application/json" \
             -H "x-skeem-admin-secret: ${{ secrets.SKEEM_ADMIN_SECRET }}" \
             -d '{"perSource":3}'
       - name: Analyze pending
         run: |
-          curl -sS --fail-with-body --max-time 600 -X POST "https://${{ secrets.APP_URL }}/api/analyze" \
+          curl -sS --fail-with-body --max-time 600 -X POST "${{ secrets.APP_URL }}/api/analyze" \
             -H "Content-Type: application/json" \
             -H "x-skeem-admin-secret: ${{ secrets.SKEEM_ADMIN_SECRET }}" \
             -d '{}'
