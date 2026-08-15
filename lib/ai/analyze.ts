@@ -4,10 +4,10 @@ import type { LanguageModel } from "ai";
 import { google, groq } from "@/lib/ai/provider";
 import {
   analysisSchema,
-  CATEGORY_OPTIONS,
   type AnalysisResult,
   type ArticleCategory,
 } from "@/lib/ai/schema";
+import { canonicalCategory } from "@/lib/categories";
 import type { ArticleAnalysisInsert } from "@/lib/supabase/types";
 import type { SentimentLabel, BiasLabel } from "@/lib/types/article";
 import {
@@ -122,10 +122,11 @@ function clamp(n: number, min: number, max: number): number {
 }
 
 // Providers disagree on cosmetic details — Groq returns "Neutral" (capitalised)
-// where the schema demands "neutral", and categories arrive as "US News",
-// "U.S. news", or "us". Normalise those value shapes BEFORE Zod validation so a
-// cosmetic difference never discards an otherwise-valid analysis (§19
-// invalid-output gate). Everything else stays strict.
+// where the schema demands "neutral", categories arrive as "US News",
+// "U.S. news", or "us", and numbers sometimes come back quoted ("55").
+// Normalise those value shapes BEFORE Zod validation so a cosmetic difference
+// never discards an otherwise-valid analysis (§19 invalid-output gate).
+// Everything else stays strict.
 function normalizeOutput(raw: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = { ...raw };
 
@@ -141,27 +142,72 @@ function normalizeOutput(raw: Record<string, unknown>): Record<string, unknown> 
   if (typeof out.category === "string") {
     out.category = resolveCategory(out.category as string);
   }
+  // Models occasionally wrap numeric fields in quotes ("-0.2", "55"). Coerce
+  // numeric strings to numbers; leave real strings to fail Zod as before.
+  for (const key of [
+    "sentimentScore",
+    "leftPercentage",
+    "centerPercentage",
+    "rightPercentage",
+    "confidence",
+  ] as const) {
+    const n = toFiniteNumber(out[key]);
+    if (n !== undefined) out[key] = n;
+  }
+  // Some models return loadedTerms as a comma-separated string rather than an
+  // array; split it instead of discarding the whole analysis.
+  if (typeof out.loadedTerms === "string") {
+    out.loadedTerms = (out.loadedTerms as string)
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
   return out;
 }
 
-/** Map a model-provided category to its canonical option ("US news" → "U.S. News"); "News" when unresolvable. */
-export function resolveCategory(label: string): ArticleCategory {
-  const key = label.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
-  for (const option of CATEGORY_OPTIONS) {
-    if (option.toLowerCase().replace(/[^a-z0-9]+/g, "") === key) return option;
+/** Accept a number or a numeric string; anything else → undefined (left to Zod). */
+function toFiniteNumber(v: unknown): number | undefined {
+  if (typeof v === "number") return Number.isFinite(v) ? v : undefined;
+  if (typeof v === "string" && v.trim() !== "") {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : undefined;
   }
-  return "News";
+  return undefined;
+}
+
+/** Map a model-provided category to its canonical option ("US news" → "U.S. News", "World News" → "World"); "News" when unresolvable. */
+export function resolveCategory(label: string): ArticleCategory {
+  return canonicalCategory(label) ?? "News";
 }
 
 // Extract JSON from model text: strip markdown fences, trailing commas, parse + validate.
+// Models sometimes wrap the JSON in prose ("Here is the analysis:") or fences;
+// when a direct parse fails, fall back to parsing the outermost {...} window so
+// surrounding text can never discard an otherwise-valid analysis.
 function extractJson(text: string): AnalysisResult {
   let raw = text.replace(/```(?:json)?\s*\n?/gi, "").replace(/```\s*$/gm, "").trim();
   raw = raw.replace(/,\s*([\]}])/g, "$1");
-  const parsed: unknown = JSON.parse(raw);
+  const parsed: unknown = tryParse(raw) ?? parseJsonWindow(raw);
   if (typeof parsed !== "object" || parsed === null) {
     throw new SyntaxError("AI output is not a JSON object");
   }
   return analysisSchema.parse(normalizeOutput(parsed as Record<string, unknown>));
+}
+
+function tryParse(raw: string): unknown | undefined {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return undefined;
+  }
+}
+
+function parseJsonWindow(raw: string): unknown | undefined {
+  const firstBrace = raw.indexOf("{");
+  const lastBrace = raw.lastIndexOf("}");
+  if (firstBrace === -1 || lastBrace <= firstBrace) return undefined;
+  const window = raw.slice(firstBrace, lastBrace + 1);
+  return tryParse(window);
 }
 
 // Single generateText call against any resolved model. Uses manual JSON
