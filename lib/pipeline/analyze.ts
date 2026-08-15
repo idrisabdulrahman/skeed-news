@@ -4,7 +4,7 @@ import type {
   AnalysisSummary,
   AnalysisFailureReason,
 } from "@/lib/pipeline/types";
-import { ANALYSIS_BATCH_SIZE } from "@/lib/pipeline/limits";
+import { ANALYSIS_BATCH_SIZE, ANALYSIS_CONCURRENCY } from "@/lib/pipeline/limits";
 import { analyzeArticle, AiQuotaError, AiTransientError } from "@/lib/ai/analyze";
 import { embedArticle } from "@/lib/ai/embed";
 import {
@@ -76,42 +76,29 @@ export async function runAnalysisPipeline(
     batches++;
     log(`batch ${batches} started`, { size: batch.length });
 
-    let bAnalyzed = 0;
-    let bBackfilled = 0;
-    let bFailed = 0;
-    let bSkipped = 0;
+    const outcomes = await runBatch(batch, failureReasons);
+    const bAnalyzed = outcomes.filter((o) => o === "analyzed").length;
+    const bBackfilled = outcomes.filter((o) => o === "backfilled").length;
+    const bSkipped = outcomes.filter((o) => o === "skipped").length;
+    const bRateLimited = outcomes.filter((o) => o === "rate_limited").length;
+    const bFailed = outcomes.filter((o) => o === "failed").length;
 
-    for (const article of batch) {
-      const outcome = await processArticle(article, failureReasons);
-      if (outcome === "analyzed") {
-        analyzed++;
-        bAnalyzed++;
-      } else if (outcome === "backfilled") {
-        embeddingsBackfilled++;
-        bBackfilled++;
-      } else if (outcome === "skipped") {
-        skipped++;
-        bSkipped++;
-      } else if (outcome === "rate_limited") {
-        // Daily quota hit — this article failed and the rest are doomed too.
-        failed++;
-        bFailed++;
-        quotaExhausted = true;
-        break;
-      } else {
-        failed++;
-        bFailed++;
-      }
-    }
+    analyzed += bAnalyzed;
+    embeddingsBackfilled += bBackfilled;
+    skipped += bSkipped;
+    failed += bFailed + bRateLimited;
 
     log(`batch ${batches} done`, {
       analyzed: bAnalyzed,
       backfilled: bBackfilled,
       skipped: bSkipped,
-      failed: bFailed,
+      failed: bFailed + bRateLimited,
+      rate_limited: bRateLimited,
     });
 
-    if (quotaExhausted) {
+    if (bRateLimited > 0) {
+      // Daily quota hit — remaining articles are doomed within this run too.
+      quotaExhausted = true;
       log("daily quota exhausted — stopping run early");
       break;
     }
@@ -145,6 +132,38 @@ type ArticleOutcome =
   | "skipped"
   | "failed"
   | "rate_limited";
+
+// Process one batch with bounded concurrency (§19). Per-article work is
+// independent — each article saves its own row — so running a few in parallel
+// cuts wall time dramatically without exceeding provider per-minute limits.
+// When one article reports a daily-quota hit, workers stop scheduling new ones
+// and wait for the in-flight articles to finish before the batch resolves.
+async function runBatch(
+  batch: PendingArticle[],
+  failureReasons: Partial<Record<AnalysisFailureReason, number>>,
+): Promise<ArticleOutcome[]> {
+  const outcomes: ArticleOutcome[] = new Array(batch.length);
+  let quotaHit = false;
+  let cursor = 0;
+
+  async function worker(): Promise<void> {
+    while (!quotaHit) {
+      const idx = cursor++;
+      if (idx >= batch.length) return;
+      const outcome = await processArticle(batch[idx], failureReasons);
+      outcomes[idx] = outcome;
+      if (outcome === "rate_limited") quotaHit = true;
+    }
+  }
+
+  await Promise.all(
+    Array.from(
+      { length: Math.min(ANALYSIS_CONCURRENCY, batch.length) },
+      () => worker(),
+    ),
+  );
+  return outcomes;
+}
 
 // Process one pending article: full analysis + embedding, or embedding-only
 // backfill. Any failure is counted (with a reason) and never saves a partial row.

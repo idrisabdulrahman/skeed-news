@@ -83,6 +83,15 @@ export const ANALYSIS_BATCH_SIZE: number = (() => {
 })();
 
 /**
+ * Articles analyzed concurrently within a batch (§19). Each article's
+ * analyze + embed + save is independent, so a small parallelism factor cuts
+ * wall time without exceeding provider per-minute limits (Groq free = 30 RPM,
+ * Google Gemini 2.0 flash free = 15 RPM). Keep low — these are rate-limited
+ * APIs.
+ */
+export const ANALYSIS_CONCURRENCY = 3;
+
+/**
  * Primary analysis model via Google AI Studio (§19). Free tier ~1000+ RPD.
  * gemini-2.5-flash is deprecated for new API users; gemini-2.0-flash is the
  * stable equivalent. When Google daily quota is exhausted, the pipeline

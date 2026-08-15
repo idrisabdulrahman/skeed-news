@@ -22,9 +22,11 @@ jobs:
             -H "Content-Type: application/json" \
             -H "x-skeem-admin-secret: ${{ secrets.SKEEM_ADMIN_SECRET }}" \
             -d '{"perSource":3}'
+      # Analyze at most 15 articles per run so the serverless function finishes
+      # within its 300s budget (backlog drains over a few hourly runs).
       - name: Analyze pending
         run: |
           curl -sS --fail-with-body --max-time 600 -X POST "${{ secrets.APP_URL }}/api/analyze" \
             -H "Content-Type: application/json" \
             -H "x-skeem-admin-secret: ${{ secrets.SKEEM_ADMIN_SECRET }}" \
-            -d '{}'
+            -d '{"limit":15}'
